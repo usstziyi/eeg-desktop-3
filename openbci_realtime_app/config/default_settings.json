@@ -1,0 +1,23 @@
+{
+  "board": {
+    "mode": "synthetic",
+    "serial_port": "COM3",
+    "timeout": 10
+  },
+  "display": {
+    "window_seconds": 4,
+    "refresh_ms": 50,
+    "y_scale_uv": 100
+  },
+  "processing": {
+    "bandpass_low_hz": 1.0,
+    "bandpass_high_hz": 45.0,
+    "notch_hz": 50.0,
+    "psd_window_seconds": 4,
+    "welch_overlap_ratio": 0.5
+  },
+  "recording": {
+    "enabled": false,
+    "directory": "recordings"
+  }
+}

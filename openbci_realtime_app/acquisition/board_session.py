@@ -1,0 +1,83 @@
+import numpy as np
+from brainflow.board_shim import BoardShim
+
+BUFFER_SIZE = 45000
+
+
+class BoardSession:
+    def __init__(self, board: BoardShim):
+        self._board = board
+        self._board_id = board.get_board_id()
+        self._sampling_rate = BoardShim.get_sampling_rate(self._board_id)
+        self._eeg_channels = BoardShim.get_eeg_channels(self._board_id)
+        self._is_streaming = False
+        self._is_prepared = False
+
+    @property
+    def board(self) -> BoardShim:
+        return self._board
+
+    @property
+    def board_id(self) -> int:
+        return self._board_id
+
+    @property
+    def sampling_rate(self) -> float:
+        return self._sampling_rate
+
+    @property
+    def eeg_channels(self) -> list[int]:
+        return self._eeg_channels
+
+    @property
+    def num_eeg_channels(self) -> int:
+        return len(self._eeg_channels)
+
+    @property
+    def timestamp_channel(self) -> int:
+        return BoardShim.get_timestamp_channel(self._board_id)
+
+    @property
+    def is_streaming(self) -> bool:
+        return self._is_streaming
+
+    @property
+    def is_prepared(self) -> bool:
+        return self._is_prepared
+
+    def prepare(self) -> None:
+        self._board.prepare_session()
+        self._is_prepared = True
+
+    def start(self, buffer_size: int = BUFFER_SIZE) -> None:
+        if not self._is_prepared:
+            raise RuntimeError("Board not prepared")
+        self._board.start_stream(buffer_size, "")
+        self._is_streaming = True
+
+    def stop(self) -> None:
+        if self._is_streaming:
+            try:
+                self._board.stop_stream()
+            finally:
+                self._is_streaming = False
+
+    def release(self) -> None:
+        try:
+            self.stop()
+        finally:
+            if self._is_prepared:
+                try:
+                    self._board.release_session()
+                finally:
+                    self._is_prepared = False
+
+    def get_current_data(self, num_samples: int) -> np.ndarray:
+        if not self._is_streaming:
+            return np.array([])
+        return self._board.get_current_board_data(num_samples)
+
+    def get_board_data(self) -> np.ndarray:
+        if not self._is_streaming:
+            return np.array([])
+        return self._board.get_board_data()
