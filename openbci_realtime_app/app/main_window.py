@@ -199,7 +199,7 @@ class MainWindow(QMainWindow):
             max_points = int(sampling_rate * window_seconds)
             refresh_points = int(sampling_rate * 0.05)
 
-            data = self._session.get_current_board_data(refresh_points * 2)
+            data = self._session.get_current_data(refresh_points * 2)
             if data.size == 0:
                 return
 

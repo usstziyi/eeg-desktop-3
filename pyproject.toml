@@ -4,4 +4,10 @@ version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.10"
-dependencies = []
+dependencies = [
+  "brainflow>=5.12.0",
+  "numpy>=1.26",
+  "scipy>=1.11",
+  "PySide6>=6.6",
+  "pyqtgraph>=0.13.7",
+]
