@@ -1,5 +1,0 @@
-brainflow
-PySide6
-pyqtgraph
-numpy
-scipy
