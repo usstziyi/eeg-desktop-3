@@ -27,21 +27,25 @@ CET_R3_DEFAULT = CET_R3 * 4
 
 
 class EEGWidget(pg.GraphicsLayoutWidget):
-    def __init__(self, n_channels=8, parent=None):
+    def __init__(self, eeg_names = None, parent=None):
         super().__init__(parent)
         self.setBackground("k")
         self._plots = {}
         self._curves = {}
-        self._n_channels = n_channels
         self._sampling_rate = 250
         self._window_time = 5.0
         self._buffer_size = int(self._sampling_rate * self._window_time)
         self._ring_buffers = {}
 
-        for i in range(n_channels):
+        if not eeg_names:
+            eeg_names = [f"CH{i+1}" for i in range(8)]
+
+        self._n_channels = len(eeg_names)
+
+        for i, name in enumerate(eeg_names):
             color = CET_R3_DEFAULT[i % len(CET_R3)]
             plot = self.addPlot(row=i, col=0)
-            plot.setLabel("left", f"CH{i + 1}", units="µV")
+            plot.setLabel("left", f"{name}", units="µV")
             plot.getAxis("left").setWidth(60)
             plot.getAxis("left").autoSIPrefix = False
 
@@ -58,13 +62,15 @@ class EEGWidget(pg.GraphicsLayoutWidget):
             else:
                 plot.setXLink(self._first_plot)
 
-            if i < n_channels - 1:
+            if i < self._n_channels - 1:
                 plot.hideAxis("bottom")
             else:
                 plot.setLabel("bottom", "Time", units="s")
                 plot.getAxis("bottom").autoSIPrefix = False
 
             self._plots[i] = plot
+
+        self.set_y_range(100)
 
         # 环形缓冲区当前写入位置
         self._write_pos = 0

@@ -39,6 +39,9 @@ class MainWindow(QMainWindow):
             directory=settings.get("recording", "directory", default="recordings")
         )
 
+        self._sample_rete: int = 250
+        self._eeg_channel_num: int = 8
+        self._eeg_names : list[str]=None
         self._raw_buffer: np.ndarray = np.array([])
         self._time_buffer: np.ndarray = np.array([])
         self._prev_board_time: float = 0.0
@@ -100,7 +103,8 @@ class MainWindow(QMainWindow):
         layout.setSpacing(6)
 
         self.tab_widget = QTabWidget()
-        self.eeg_widget = EEGWidget()
+        self._eeg_names=['Fp1', 'Fp2', 'C3', 'C4', 'P7', 'P8', 'O1', 'O2']
+        self.eeg_widget = EEGWidget(self._eeg_names)
         self.fft_widget = FFTWidget()
         
         self.tab_widget.addTab(self.eeg_widget, "EEG 时序图")
@@ -194,17 +198,16 @@ class MainWindow(QMainWindow):
             self._session = session
             self._control_panel.set_connected(True)
 
+            self._sample_rete = session.sampling_rate
+            self._eeg_channel_num = session.eeg_channels
+            self._eeg_names = session.eeg_names
+
             window_s = self._settings.get("display", "window_seconds", default=4.0)
             self.eeg_widget.set_window_time(window_s)
 
             amplitude_range = self._settings.get("display", "amplitude_range", default=100)
             self.eeg_widget.set_y_range(amplitude_range)
 
-            print(window_s)
-            print(amplitude_range)
-
-            self._elapsed_time = 0.0
-            self._prev_board_time = 0.0
             self._raw_buffer = np.array([])
             self._time_buffer = np.array([])
 
