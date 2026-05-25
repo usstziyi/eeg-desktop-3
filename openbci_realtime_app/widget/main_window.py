@@ -282,8 +282,7 @@ class MainWindow(QMainWindow):
     compute_band_powers()     ──→ 工作线程
 
     留在主线程的都是轻量操作：
-    NumPy 切片/拼接            ──→ C 级实现，微秒级
-    pyqtgraph setData         ──→ 渲染层已优化
+    pyqtgraph updata_data    ──→ 渲染层已优化
     emit 信号                 ──→ 微秒级投递
     CSV 录制                  ──→ 入队 queue.put() 微秒级，后台 daemon 线程写磁盘
     """
