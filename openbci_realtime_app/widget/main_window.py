@@ -55,8 +55,8 @@ class MainWindow(QMainWindow):
         self._init_ui()
         self._setup_menubar()
         self._restore_window_state()
-        # self._init_timer()
-        # self._init_processing_thread()
+        self._init_timer()
+        self._init_processing_thread()
 
         self._connect_signals()
 
@@ -165,7 +165,7 @@ class MainWindow(QMainWindow):
         self._timer.setTimerType(Qt.TimerType.PreciseTimer)
         self._refresh_ms = self._settings.get("display", "refresh_ms", default=50)
         self._timer.setInterval(self._refresh_ms)
-        self._timer.timeout.connect(self._on_timer_tick)
+        # self._timer.timeout.connect(self._on_timer_tick)
 
     def _init_processing_thread(self) -> None:
         self._processing_worker = ProcessingWorker()
@@ -407,16 +407,16 @@ class MainWindow(QMainWindow):
         self._app_settings.setValue("window/geometry", self.saveGeometry())
         self._app_settings.setValue("window/state", self.saveState())
 
-        # self._timer.stop()
+        self._timer.stop()
 
-        # if self._recorder.is_recording:
-        #     self._recorder.stop()
+        if self._recorder.is_recording:
+            self._recorder.stop()
 
-        # if self._session:
-        #     self._session.release()
+        if self._session:
+            self._session.release()
 
-        # self._processing_thread.quit()
-        # self._processing_thread.wait(3000)
+        self._processing_thread.quit()
+        self._processing_thread.wait(3000)
 
         try:
             user_path = os.path.join(

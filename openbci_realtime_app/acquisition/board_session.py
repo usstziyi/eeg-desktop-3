@@ -85,3 +85,41 @@ class BoardSession:
         if not self._is_streaming:
             return np.array([])
         return self._board.get_board_data()
+
+
+"""
+[
+    package_num,
+    EEG1,
+    EEG2,
+    EEG3,
+    EEG4,
+    EEG5,
+    EEG6,
+    EEG7,
+    EEG8,
+    accel_x,
+    accel_y,
+    accel_z,
+    ...
+    timestamp,
+    marker
+]
+
+['Fp1', 'Fp2', 'C3', 'C4', 'P7', 'P8', 'O1', 'O2']
+
+
+eeg_channels = BoardShim.get_eeg_channels(board_id)
+accel_channels = BoardShim.get_accel_channels(board_id)
+timestamp_channel = BoardShim.get_timestamp_channel(board_id)
+package_num_channel = BoardShim.get_package_num_channel(board_id)
+sampling_rate = BoardShim.get_sampling_rate(board_id)
+
+eeg_data = data[eeg_channels, :]
+accel_data = data[accel_channels, :]
+timestamps = data[timestamp_channel, :]
+package_nums = data[package_num_channel, :]
+
+t = np.arange(-n + 1, 1) / fs
+curve.setData(t, eeg)
+"""

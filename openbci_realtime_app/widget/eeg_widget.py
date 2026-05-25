@@ -1,6 +1,10 @@
 import pyqtgraph as pg
 import numpy as np
 
+from PySide6 import QtGui
+
+
+
 CUSTOM_COLOR = [
     (100, 180, 255),
     (255, 150, 100),
@@ -36,6 +40,8 @@ class EEGWidget(pg.GraphicsLayoutWidget):
         self._window_time = 5.0
         self._buffer_size = int(self._sampling_rate * self._window_time)
         self._ring_buffers = {}
+        font = QtGui.QFont()
+        font.setPointSize(10)
 
         if not eeg_names:
             eeg_names = [f"CH{i+1}" for i in range(8)]
@@ -48,10 +54,12 @@ class EEGWidget(pg.GraphicsLayoutWidget):
             plot.setLabel("left", f"{name}", units="µV")
             plot.getAxis("left").setWidth(60)
             plot.getAxis("left").autoSIPrefix = False
+            plot.getAxis("left").setStyle(tickFont=font) 
 
             plot.setDownsampling(auto=True, mode="peak")
             plot.setClipToView(True)
             plot.addLine(y=0, pen=pg.mkPen((255, 255, 255, 60), width=1, style=pg.QtCore.Qt.PenStyle.DashLine))
+            plot.getAxis("bottom").autoSIPrefix = False
 
             curve = plot.plot(pen=pg.mkPen(color, width=1))
             self._curves[i] = curve
@@ -66,86 +74,26 @@ class EEGWidget(pg.GraphicsLayoutWidget):
                 plot.hideAxis("bottom")
             else:
                 plot.setLabel("bottom", "Time", units="s")
-                plot.getAxis("bottom").autoSIPrefix = False
 
             self._plots[i] = plot
 
+        self.set_x_range(5)
         self.set_y_range(100)
 
-        # 环形缓冲区当前写入位置
-        self._write_pos = 0
-        # 已接收的总样本数（用于判断缓冲区是否已填满）
-        self._total_samples = 0
+
+
+
+    def set_x_range(self, value):
+        for plot in self._plots.values():
+            plot.setXRange(-value, 0, padding=0)
 
     def set_y_range(self, value):
         for plot in self._plots.values():
-            plot.setYRange(-value, value)
+            plot.setYRange(-value, value, padding=0)
             ticks = [[(-value, str(-value)), (value, str(value))]]
             plot.getAxis("left").setTicks(ticks)
 
-    def set_window_time(self, value):
-        self._window_time = value
-        self._resize_buffers()
 
-    def set_sampling_rate(self, value):
-        self._sampling_rate = value
-        self._resize_buffers()
 
-    def _resize_buffers(self):
-        new_size = int(self._sampling_rate * self._window_time)
-        if new_size == self._buffer_size:
-            return
 
-        old_size = self._buffer_size
-        self._buffer_size = new_size
 
-        total = min(self._total_samples, old_size)
-        keep = min(total, new_size)
-
-        for ch in self._ring_buffers:
-            old = self._ring_buffers[ch]
-            if total == 0:
-                self._ring_buffers[ch] = np.zeros(new_size, dtype=np.float64)
-                continue
-
-            if total <= old_size:
-                y = old[:total]
-            else:
-                start = self._write_pos
-                y = np.concatenate([old[start:], old[:start]])
-
-            latest = y[-keep:]
-            buf = np.zeros(new_size, dtype=np.float64)
-            buf[:keep] = latest
-            self._ring_buffers[ch] = buf
-
-        self._write_pos = keep
-
-    @property
-    def channel_count(self):
-        return self._n_channels
-
-    def update_data(self, data: np.ndarray):
-        n_ch, n_samples = data.shape
-        ch_count = min(n_ch, self._n_channels)
-
-        for i in range(ch_count):
-            buf = self._ring_buffers[i]
-            for j in range(n_samples):
-                buf[self._write_pos] = data[i, j]
-                self._write_pos = (self._write_pos + 1) % self._buffer_size
-                self._total_samples += 1
-
-        visible = min(self._total_samples, self._buffer_size)
-        x = np.arange(visible)
-
-        for i in range(ch_count):
-            buf = self._ring_buffers[i]
-            if self._total_samples <= self._buffer_size:
-                y = buf[:self._total_samples]
-            else:
-                start = self._write_pos
-                y = np.concatenate([buf[start:], buf[:start]])
-
-            if len(y) > 0:
-                self._curves[i].setData(x[-len(y):], y)

@@ -1,12 +1,12 @@
 {
   "device": {
     "name": "cyton",
-    "serial_port": "/dev/cu.Bluetooth-Incoming-Port"
+    "serial_port": ""
   },
   "display": {
     "refresh_ms": 50,
-    "window_seconds": 8.0,
-    "amplitude_range": 100
+    "window_seconds": 28.0,
+    "amplitude_range": 220
   },
   "process": {
     "detrend": true,
