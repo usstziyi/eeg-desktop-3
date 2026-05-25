@@ -14,6 +14,15 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from acquisition.serial_ports import list_serial_ports
+
+
+class PortComboBox(QComboBox):
+    def showPopup(self):
+        self.clear()
+        self.addItems(list_serial_ports())
+        super().showPopup()
+
 
 class ControlPanel(QWidget):
     connect_requested = Signal()
@@ -31,42 +40,45 @@ class ControlPanel(QWidget):
         device_group = self._build_device_group()
         stream_group = self._build_stream_group()
         process_group = self._build_process_group()
+        spectral_group = self._build_spectral_group()
         display_group = self._build_display_group()
         recorder_group = self._build_recorder_group()
         main_layout.addWidget(device_group)
         main_layout.addWidget(stream_group)
         main_layout.addWidget(process_group)
+        main_layout.addWidget(spectral_group)
         main_layout.addWidget(display_group)
-        main_layout.addWidget(recorder_group)
         main_layout.addStretch(1)
+        main_layout.addWidget(recorder_group)
+        
     
     def _build_device_group(self):
-        device_group = QGroupBox("设备")
+        device_group = QGroupBox("设备选择")
         device_layout = QFormLayout(device_group)
         self._device_combo = QComboBox()
         self._device_combo.addItems(["synthetic", "cyton"])
-        device_layout.addRow("名称:", self._device_combo)
-        self._port_combo = QComboBox()
-        device_layout.addRow("串口:", self._port_combo)
+        self._port_combo = PortComboBox()
         self._connect_btn = QPushButton("Connect")
         self._disconnect_btn = QPushButton("Disconnect")
         self._disconnect_btn.setEnabled(False)
         btn_row = QHBoxLayout()
         btn_row.addWidget(self._connect_btn)
         btn_row.addWidget(self._disconnect_btn)
+        device_layout.addRow("名称:", self._device_combo)
+        device_layout.addRow("串口:", self._port_combo)
         device_layout.addRow(btn_row)
         return device_group
         
     def _build_stream_group(self):
-        stream_group = QGroupBox("信号")
+        stream_group = QGroupBox("数据流")
         stream_layout = QFormLayout(stream_group)
-        self._start_btn = QPushButton("Start")
-        self._stop_btn = QPushButton("Stop")
-        self._stop_btn.setEnabled(False)
-        self._start_btn.setEnabled(False)
+        self._start_stream_btn = QPushButton("Start")
+        self._stop_stream_btn = QPushButton("Stop")
+        self._start_stream_btn.setEnabled(False)
+        self._stop_stream_btn.setEnabled(False)
         stream_btn_row = QHBoxLayout()
-        stream_btn_row.addWidget(self._start_btn)
-        stream_btn_row.addWidget(self._stop_btn)
+        stream_btn_row.addWidget(self._start_stream_btn)
+        stream_btn_row.addWidget(self._stop_stream_btn)
         stream_layout.addRow(stream_btn_row)
         return stream_group
         
@@ -74,60 +86,86 @@ class ControlPanel(QWidget):
     def _build_process_group(self):
         process_group = QGroupBox("预处理")
         process_layout = QFormLayout(process_group)
-
+        # detrend
+        self._detrend_check = QCheckBox()
+        self._detrend_check.setChecked(True)
+        process_layout.addRow("去除漂移:",self._detrend_check)
+        # BandPass low
         self._bp_low_spin = QDoubleSpinBox()
         self._bp_low_spin.setRange(0.1, 20.0)
-        self._bp_low_spin.setValue(1.0)
+        self._bp_low_spin.setValue(0.1)
+        self._bp_low_spin.setSingleStep(0.1)
         self._bp_low_spin.setSuffix(" Hz")
-        self._bp_low_spin.setDecimals(1)
-        process_layout.addRow("BP Low:", self._bp_low_spin)
-
+        process_layout.addRow("低通滤波:", self._bp_low_spin)
+        # BandPass high
         self._bp_high_spin = QDoubleSpinBox()
         self._bp_high_spin.setRange(20.0, 100.0)
         self._bp_high_spin.setValue(45.0)
+        self._bp_high_spin.setSingleStep(0.1)
         self._bp_high_spin.setSuffix(" Hz")
         self._bp_high_spin.setDecimals(1)
-        process_layout.addRow("BP High:", self._bp_high_spin)
-
+        process_layout.addRow("高通滤波:", self._bp_high_spin)
+        # notch
         self._notch_combo = QComboBox()
         self._notch_combo.addItems(["50 Hz", "60 Hz", "None"])
-        process_layout.addRow("Notch:", self._notch_combo)
+        process_layout.addRow("工频滤波:", self._notch_combo)
 
-        self._psd_win_spin = QDoubleSpinBox()
-        self._psd_win_spin.setRange(1.0, 10.0)
-        self._psd_win_spin.setValue(4.0)
-        self._psd_win_spin.setSuffix(" s")
-        process_layout.addRow("PSD Win:", self._psd_win_spin)
         return process_group
+
+    def _build_spectral_group(self):
+        spectral_group = QGroupBox("频域分析")
+        spectral_layout = QFormLayout(spectral_group)
+        self._window_type = QComboBox()
+        self._window_type.addItems(["Hann", "Hamming", "Blackman", "Bartlett", "Rectangular"])
+        self._window_type.setCurrentText("Hamming")
+        spectral_layout.addRow("窗口类型:",self._window_type)
+        self._spectral_time = QDoubleSpinBox()
+        self._spectral_time.setSuffix(" s")
+        self._spectral_time.setRange(0.5, 5.0)
+        self._spectral_time.setSingleStep(0.5)
+        spectral_layout.addRow("频谱窗长:",self._spectral_time)
+        self._overlap_ratio = QSpinBox()
+        self._overlap_ratio.setSuffix(" %")
+        self._overlap_ratio.setRange(10,50)
+        self._overlap_ratio.setSingleStep(5)
+        spectral_layout.addRow("重叠比例:",self._overlap_ratio)
+        return spectral_group
+
 
 
     def _build_display_group(self):
         display_group = QGroupBox("显示设置")
         display_layout = QFormLayout(display_group)
-        self._window_spin = QDoubleSpinBox()
-        self._window_spin.setRange(2.0, 30.0)
-        self._window_spin.setValue(4.0)
-        self._window_spin.setSuffix(" s")
-        display_layout.addRow("Window:", self._window_spin)
+        self._window_time_spin = QDoubleSpinBox()
+        self._window_time_spin.setRange(2.0, 30.0)
+        self._window_time_spin.setValue(4.0)
+        self._window_time_spin.setSingleStep(1)
+        self._window_time_spin.setSuffix(" s")
+        display_layout.addRow("显示时长:", self._window_time_spin)
+
+        self._amplitude_spin = QSpinBox()
+        self._amplitude_spin.setRange(10, 1000)
+        self._amplitude_spin.setValue(100)
+        self._amplitude_spin.setSingleStep(10)
+        self._amplitude_spin.setSuffix(" µV")
+        display_layout.addRow("信号强度",self._amplitude_spin)
 
         self._refresh_spin = QSpinBox()
         self._refresh_spin.setRange(20, 200)
         self._refresh_spin.setValue(50)
         self._refresh_spin.setSuffix(" ms")
         display_layout.addRow("Refresh:", self._refresh_spin)
-
-        self._yscale_spin = QSpinBox()
-        self._yscale_spin.setRange(10, 1000)
-        self._yscale_spin.setValue(100)
-        self._yscale_spin.setSuffix(" µV")
-        display_layout.addRow("Y轴范围",self._yscale_spin)
         return display_group
 
     def _build_recorder_group(self):
-        recorder_group = QGroupBox("录制")
+        recorder_group = QGroupBox("信号录制")
         recorder_layout = QFormLayout(recorder_group)
         self._record_check = QCheckBox("Record")
+        self._record_original_signal = QCheckBox("原始信号")
+        self._record_process_signal = QCheckBox("实时信号")
         self.recorder_button = QPushButton("录制")
+        recorder_layout.addRow(self._record_original_signal)
+        recorder_layout.addRow(self._record_process_signal)
         recorder_layout.addRow(self.recorder_button)
         return recorder_group
 

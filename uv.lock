@@ -37,6 +37,7 @@ dependencies = [
     { name = "numpy", version = "2.2.6", source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }, marker = "python_full_version < '3.11'" },
     { name = "numpy", version = "2.4.4", source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }, marker = "python_full_version >= '3.11'" },
     { name = "pyqtgraph" },
+    { name = "pyserial" },
     { name = "pyside6" },
     { name = "scipy", version = "1.15.3", source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }, marker = "python_full_version < '3.11'" },
     { name = "scipy", version = "1.17.1", source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }, marker = "python_full_version >= '3.11'" },
@@ -47,6 +48,7 @@ requires-dist = [
     { name = "brainflow", specifier = ">=5.12.0" },
     { name = "numpy", specifier = ">=1.26" },
     { name = "pyqtgraph", specifier = ">=0.13.7" },
+    { name = "pyserial", specifier = ">=3.5" },
     { name = "pyside6", specifier = ">=6.6" },
     { name = "scipy", specifier = ">=1.11" },
 ]
@@ -209,6 +211,15 @@ dependencies = [
 ]
 wheels = [
     { url = "https://mirrors.aliyun.com/pypi/packages/32/36/4c242f81fdcbfa4fb62a5645f6af79191f4097a0577bd5460c24f19cc4ef/pyqtgraph-0.14.0-py3-none-any.whl", hash = "sha256:7abb7c3e17362add64f8711b474dffac5e7b0e9245abdf992e9a44119b7aa4f5" },
+]
+
+[[package]]
+name = "pyserial"
+version = "3.5"
+source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+sdist = { url = "https://mirrors.aliyun.com/pypi/packages/1e/7d/ae3f0a63f41e4d2f6cb66a5b57197850f919f59e558159a4dd3a818f5082/pyserial-3.5.tar.gz", hash = "sha256:3c77e014170dfffbd816e6ffc205e9842efb10be9f58ec16d3e8675b4925cddb" }
+wheels = [
+    { url = "https://mirrors.aliyun.com/pypi/packages/07/bc/587a445451b253b285629263eb51c2d8e9bcea4fc97826266d186f96f558/pyserial-3.5-py2.py3-none-any.whl", hash = "sha256:c4451db6ba391ca6ca299fb3ec7bae67a5c55dde170964c7a14ceefec02f2cf0" },
 ]
 
 [[package]]
