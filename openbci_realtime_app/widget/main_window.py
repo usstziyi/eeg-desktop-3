@@ -18,7 +18,8 @@ from processing import FilterConfig, ProcessingWorker
 from recording import Recorder
 
 from .control_panel import ControlPanel
-from .eeg_widget import EegWidget
+from .eeg_widget import EEGWidget
+from .fft_widget import FFTWidget
 from .spectrum_widget import SpectrumWidget
 from .band_power_widget import BandPowerWidget
 
@@ -96,8 +97,8 @@ class MainWindow(QMainWindow):
         layout.setSpacing(6)
 
         self.tab_widget = QTabWidget()
-        self.eeg_widget = EegWidget()
-        self.fft_widget = SpectrumWidget()
+        self.eeg_widget = EEGWidget()
+        self.fft_widget = FFTWidget()
         
         self.tab_widget.addTab(self.eeg_widget, "EEG 时序图")
         self.tab_widget.addTab(self.fft_widget, "FFT 频谱图")

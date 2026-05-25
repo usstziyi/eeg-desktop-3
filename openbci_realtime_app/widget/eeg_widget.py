@@ -26,7 +26,7 @@ CET_R3 = [
 CET_R3_DEFAULT = CET_R3 * 4
 
 
-class EegWidget(pg.GraphicsLayoutWidget):
+class EEGWidget(pg.GraphicsLayoutWidget):
     def __init__(self, n_channels=8, parent=None):
         super().__init__(parent)
         self.setBackground("k")
