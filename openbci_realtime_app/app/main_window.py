@@ -44,6 +44,7 @@ class MainWindow(QMainWindow):
         self._elapsed_time: float = 0.0
         self._psd_counter: int = 0
         self._psd_interval: int = 4
+        self._refresh_ms: int = 50
 
         self._init_ui()
         self._init_timer()
@@ -90,9 +91,10 @@ class MainWindow(QMainWindow):
 
     def _init_timer(self) -> None:
         self._timer = QTimer(self)
+        # 设置定时器为精确计时器模式，确保更准确的定时精度，减少系统调度带来的延迟
         self._timer.setTimerType(Qt.TimerType.PreciseTimer)
-        refresh_ms = self._settings.get("display", "refresh_ms", default=50)
-        self._timer.setInterval(refresh_ms)
+        self._refresh_ms = self._settings.get("display", "refresh_ms", default=50)
+        self._timer.setInterval(self._refresh_ms)
         self._timer.timeout.connect(self._on_timer_tick)
 
     def _init_processing_thread(self) -> None:
@@ -100,6 +102,8 @@ class MainWindow(QMainWindow):
         self._processing_thread = QThread(self)
         self._processing_worker.moveToThread(self._processing_thread)
         self._processing_thread.start()
+        # 将处理线程的结果信号连接到主界面的回调函数，使用队列连接确保线程安全
+        # 非阻塞投递信号
         self._processing_worker.processed_ready.connect(
             self._on_processed_data, Qt.ConnectionType.QueuedConnection
         )
@@ -134,6 +138,7 @@ class MainWindow(QMainWindow):
             self._eeg_plot.set_window_seconds(window_s)
 
             y_scale = self._settings.get("display", "y_scale_uv", default=100)
+            # * 2 本质是： y_scale_uv 不是"硬上限"，而是"舒适范围"，乘以 2 提供视觉余量
             y_range = y_scale * 2
             self._eeg_plot.set_y_range(-y_range, y_range)
 
@@ -148,7 +153,9 @@ class MainWindow(QMainWindow):
             self._status_bar.set_status(f"Error: {e}")
 
     def _on_disconnect(self) -> None:
+        # 第一步不是断开硬件，而是 先把运行中的一切停下来
         self._on_stop()
+        # 第二步断开硬件
         if self._session:
             self._session.release()
             self._session = None
@@ -156,6 +163,8 @@ class MainWindow(QMainWindow):
         self._status_bar.set_status("Disconnected")
         self._status_bar.set_mode("--")
         self._status_bar.set_sampling_rate(0)
+        # 在断开连接时 重置所有图表，清空残留的波形数据
+        # 创建 8 条新的空曲线
         self._eeg_plot.setup_channels(8)
         self._spectrum_widget.setup_channels(8)
         self._band_power_widget.setup_channels(8)
@@ -190,6 +199,17 @@ class MainWindow(QMainWindow):
             self._control_panel._record_check.setChecked(False)
         logger.info("Stream stopped")
 
+    """
+    耗时操作全部异步：
+    apply_filter_chain()      ──→ 工作线程
+    compute_psd_welch()       ──→ 工作线程
+    compute_band_powers()     ──→ 工作线程
+
+    留在主线程的都是轻量操作：
+    NumPy 切片/拼接           ──→ C 级实现，微秒级
+    pyqtgraph setData         ──→ 渲染层已优化
+    emit 信号                 ──→ 微秒级投递
+    """
     def _on_timer_tick(self) -> None:
         if self._session is None or not self._session.is_streaming:
             return
@@ -197,8 +217,9 @@ class MainWindow(QMainWindow):
             sampling_rate = self._session.sampling_rate
             window_seconds = self._settings.get("display", "window_seconds", default=4.0)
             max_points = int(sampling_rate * window_seconds)
-            refresh_points = int(sampling_rate * 0.05)
-
+            # 计算每次刷新需要获取的数据点数：采样率 × 0.05秒（即50毫秒，与定时器间隔对应）
+            refresh_points = int(sampling_rate * self._refresh_ms / 1000.0)
+            # 为了安全余量，防止因定时器抖动而丢数据
             data = self._session.get_current_data(refresh_points * 2)
             if data.size == 0:
                 return
@@ -261,6 +282,9 @@ class MainWindow(QMainWindow):
                         psd_window_s,
                         self._settings.get("processing", "welch_overlap_ratio", default=0.5),
                     )
+                    # 这就是 "调用变投递" ： process() 看起来是方法调用，实际上是个轻量级的信号发射器，
+                    # 真正耗时计算通过 Qt 事件队列 跨线程异步调度 到了工作线程。
+                    # .copy() 创建独立副本，线程安全
                     self._processing_worker.process(analysis_data.copy(), sampling_rate)
 
             if self._recorder.is_recording:
@@ -281,8 +305,7 @@ class MainWindow(QMainWindow):
     def _on_record_toggled(self, checked: bool) -> None:
         if checked:
             if self._session and self._session.is_streaming:
-                channel_count = self._session.num_eeg_channels
-                labels = [f"ch{i + 1}" for i in range(channel_count)]
+                labels = self._session.eeg_names
                 path = self._recorder.start(labels)
                 self._status_bar.set_status(f"Recording: {Path(path).name}")
                 logger.info("Recording started: %s", path)
@@ -296,14 +319,14 @@ class MainWindow(QMainWindow):
         for key, value in updates.items():
             parts = key.split(".")
             self._settings.set(value, *parts)
-        refresh_ms = self._settings.get("display", "refresh_ms", default=50)
-        self._timer.setInterval(refresh_ms)
+        self._refresh_ms = self._settings.get("display", "refresh_ms", default=50)
+        self._timer.setInterval(self._refresh_ms)
         window_s = self._settings.get("display", "window_seconds", default=4.0)
         self._eeg_plot.set_window_seconds(window_s)
         y_scale = self._settings.get("display", "y_scale_uv", default=100)
         y_range = y_scale * 2
         self._eeg_plot.set_y_range(-y_range, y_range)
-        self._psd_interval = max(4, int(200 / max(refresh_ms, 1)))
+        self._psd_interval = max(4, int(200 / max(self._refresh_ms, 1)))
 
     def _make_filter_config(self) -> FilterConfig:
         return FilterConfig(

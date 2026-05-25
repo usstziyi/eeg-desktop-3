@@ -1,13 +1,13 @@
 {
   "board": {
     "mode": "cyton",
-    "serial_port": "COM5",
+    "serial_port": "COM3",
     "timeout": 10
   },
   "display": {
     "window_seconds": 4.0,
     "refresh_ms": 50,
-    "y_scale_uv": 200
+    "y_scale_uv": 100
   },
   "processing": {
     "bandpass_low_hz": 1.0,

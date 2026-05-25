@@ -34,6 +34,10 @@ class BoardSession:
         return len(self._eeg_channels)
 
     @property
+    def eeg_names(self) -> list[str]:
+        return BoardShim.get_eeg_names(self._board_id)
+
+    @property
     def timestamp_channel(self) -> int:
         return BoardShim.get_timestamp_channel(self._board_id)
 

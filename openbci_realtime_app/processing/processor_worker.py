@@ -29,6 +29,7 @@ class ProcessingWorker(QObject):
         self._welch_overlap = welch_overlap
 
     def process(self, raw_eeg: np.ndarray, sampling_rate: float) -> None:
+        # 主线程发射信号，自动选择 QueuedConnection，发给子线程
         self._trigger.emit(raw_eeg, sampling_rate)
 
     @Slot(object, float)

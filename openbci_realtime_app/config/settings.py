@@ -41,6 +41,7 @@ class Settings:
         if os.path.exists(filepath):
             with open(filepath, "r", encoding="utf-8") as f:
                 loaded = json.load(f)
+            # 用于 递归地将 JSON 文件加载的配置合并到现有配置中
             self._merge(self._data, loaded)
         self._filepath = filepath
 
@@ -62,9 +63,13 @@ class Settings:
         return node if node is not None else default
 
     def set(self, value: Any, *keys: str) -> None:
+        # 获取配置数据的根节点
         node = self._data
+        # 遍历除最后一个键以外的所有键，逐层创建嵌套字典
         for key in keys[:-1]:
+            # 如果键不存在则创建空字典，确保路径存在
             node = node.setdefault(key, {})
+        # 在最终节点上设置值
         node[keys[-1]] = value
 
     @staticmethod

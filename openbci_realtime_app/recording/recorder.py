@@ -17,6 +17,7 @@ class Recorder:
     def is_recording(self) -> bool:
         return self._is_recording
 
+    # 负责创建 CSV 文件并写入表头
     def start(self, channel_labels: list[str] | None = None) -> str:
         if self._is_recording:
             return ""
@@ -25,9 +26,10 @@ class Recorder:
         filename = os.path.join(self._directory, f"eeg_recording_{timestamp}.csv")
         self._file = open(filename, "w", newline="", encoding="utf-8")
         self._writer = csv.writer(self._file)
+        # 记录每个采样点的绝对时间
         header = ["timestamp"]
         if channel_labels:
-            header += [f"ch{i}" for i in range(len(channel_labels))]
+            header += channel_labels
         else:
             header += [f"ch{i}" for i in range(8)]
         header.append("marker")
@@ -48,6 +50,7 @@ class Recorder:
         self._file = None
         self._writer = None
 
+    # 负责写入每行数据
     def write_samples(self, data: np.ndarray, sampling_rate: float = 250.0, marker: int = 0) -> None:
         if not self._is_recording or self._writer is None:
             return
@@ -58,6 +61,6 @@ class Recorder:
         dt = 1.0 / sampling_rate if sampling_rate > 0 else 0.004
         for i in range(num_samples):
             row = [f"{t + i * dt:.6f}"]
-            row += [f"{data[ch, i]:.6f}" for ch in range(data.shape[0])]
+            row.extend(f"{data[ch, i]:.6f}" for ch in range(data.shape[0]))
             row.append(str(marker))
             self._writer.writerow(row)
