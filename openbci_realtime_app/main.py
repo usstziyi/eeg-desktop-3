@@ -1,5 +1,6 @@
 import sys
 
+from brainflow.board_shim import BoardShim
 from PySide6.QtCore import QSettings
 from PySide6.QtWidgets import QApplication
 
@@ -8,6 +9,7 @@ from parameter import load_default_settings
 
 
 def main() -> None:
+    BoardShim.disable_board_logger()
     settings = load_default_settings()
     app = QApplication(sys.argv)
     app.setStyle("fusion")

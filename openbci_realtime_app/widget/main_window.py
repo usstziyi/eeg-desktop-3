@@ -1,4 +1,5 @@
 import os
+import traceback
 
 import numpy as np
 from PySide6.QtCore import QSettings, QTimer, QThread, Qt
@@ -39,16 +40,17 @@ class MainWindow(QMainWindow):
             directory=settings.get("recording", "directory", default="recordings")
         )
 
-        self._sample_rete: int = 250
+        self._sample_rate: int = 250
         self._eeg_channel_num: int = 8
-        self._eeg_names : list[str]=None
-        self._raw_buffer: np.ndarray = np.array([])
-        self._time_buffer: np.ndarray = np.array([])
-        self._prev_board_time: float = 0.0
-        self._elapsed_time: float = 0.0
-        self._psd_counter: int = 0
-        self._psd_interval: int = 4
+        self._eeg_names: list[str]=None
+        self._eeg_channels: list[int]=None
+
+        self._raw_data: np.ndarray = np.array([]) # 所有通道数据
+        self._eeg_data: np.ndarray = np.array([]) # eeg通道数据
+
+
         self._refresh_ms: int = 50
+        self._window_time: int=5
 
         self._app_settings = QSettings()
 
@@ -165,7 +167,7 @@ class MainWindow(QMainWindow):
         self._timer.setTimerType(Qt.TimerType.PreciseTimer)
         self._refresh_ms = self._settings.get("display", "refresh_ms", default=50)
         self._timer.setInterval(self._refresh_ms)
-        # self._timer.timeout.connect(self._on_timer_tick)
+        self._timer.timeout.connect(self._on_timer_tick)
 
     def _init_processing_thread(self) -> None:
         self._processing_worker = ProcessingWorker()
@@ -198,18 +200,19 @@ class MainWindow(QMainWindow):
             self._session = session
             self._control_panel.set_connected(True)
 
-            self._sample_rete = session.sampling_rate
-            self._eeg_channel_num = session.eeg_channels
+            self._sample_rate = session.sampling_rate
+            self._eeg_channel_num = session.eeg_channel_num
             self._eeg_names = session.eeg_names
+            self._eeg_channels = session.eeg_channels
+            self._window_time = self._settings.get("display", "window_seconds", default=4.0)
+            amplitude_range = self._settings.get("display", "amplitude_range", default=100) 
 
-            window_s = self._settings.get("display", "window_seconds", default=4.0)
-            self.eeg_widget.set_window_time(window_s)
-
-            amplitude_range = self._settings.get("display", "amplitude_range", default=100)
+            self.eeg_widget.set_x_range(self._window_time)
             self.eeg_widget.set_y_range(amplitude_range)
 
-            self._raw_buffer = np.array([])
-            self._time_buffer = np.array([])
+            self._raw_data = np.array([])
+            self._eeg_data = np.array([])
+ 
 
             self._show_board_info(session, name)
 
@@ -233,7 +236,7 @@ class MainWindow(QMainWindow):
         info_lines = [
             f"设备名称：{name}",
             f"采样率：{session.sampling_rate} Hz",
-            f"EEG 通道数：{session.num_eeg_channels}",
+            f"EEG 通道数：{session.eeg_channel_num}",
         ]
         if eeg_names:
             info_lines.append(f"EEG 通道：{', '.join(eeg_names)}")
@@ -250,8 +253,6 @@ class MainWindow(QMainWindow):
             self._session.release()
             self._session = None
         self._control_panel.set_connected(False)
-        self._spectrum_widget.setup_channels(8)
-        self._band_power_widget.setup_channels(8)
 
     def _on_start(self) -> None:
         if self._session is None:
@@ -259,14 +260,11 @@ class MainWindow(QMainWindow):
         try:
             self._session.start()
             self._control_panel.set_streaming(True)
-            self._elapsed_time = 0.0
-            self._prev_board_time = 0.0
-            self._raw_buffer = np.array([])
-            self._time_buffer = np.array([])
-            self._psd_counter = 0
+            self._raw_data = np.array([])
+            self._eeg_data = np.array([])
             self._timer.start()
         except Exception:
-            pass
+            traceback.print_exc()
 
     def _on_stop(self) -> None:
         self._timer.stop()
@@ -293,10 +291,19 @@ class MainWindow(QMainWindow):
         if self._session is None or not self._session.is_streaming:
             return
         try:
-            pass
+            self._window_time = self._settings.get("display", "window_seconds", default=4.0)
+            window_sample_num = int(self._sample_rate * self._window_time)
+            # 所有通道数据
+            self._raw_data = self._session.get_current_data(window_sample_num)
+            # eeg通道数据
+            self._eeg_data = self._raw_data[self._eeg_channels[:8], :]
+
+            if self._eeg_data.size > 0 and self._eeg_data.shape[1] > 0:
+                t = np.arange(-self._eeg_data.shape[1] + 1, 1) / self._sample_rate
+                self.eeg_widget.updata_data(t, self._eeg_data)
 
         except Exception:
-            pass
+            traceback.print_exc()
 
     def _on_processed_data(self, result) -> None:
         try:

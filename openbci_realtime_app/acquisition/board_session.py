@@ -1,7 +1,7 @@
 import numpy as np
 from brainflow.board_shim import BoardShim
 
-BUFFER_SIZE = 45000
+BUFFER_SIZE = 45000  # 180s数据
 
 
 class BoardSession:
@@ -30,7 +30,7 @@ class BoardSession:
         return self._eeg_channels
 
     @property
-    def num_eeg_channels(self) -> int:
+    def eeg_channel_num(self) -> int:
         return len(self._eeg_channels)
 
     @property
@@ -79,6 +79,7 @@ class BoardSession:
     def get_current_data(self, num_samples: int) -> np.ndarray:
         if not self._is_streaming:
             return np.array([])
+        # 返回的是 所有通道的完整数据包
         return self._board.get_current_board_data(num_samples)
 
     def get_board_data(self) -> np.ndarray:

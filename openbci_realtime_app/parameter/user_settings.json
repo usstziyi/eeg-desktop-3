@@ -1,12 +1,12 @@
 {
   "device": {
     "name": "cyton",
-    "serial_port": ""
+    "serial_port": "/dev/cu.usbmodem112101"
   },
   "display": {
     "refresh_ms": 50,
-    "window_seconds": 15.0,
-    "amplitude_range": 200
+    "window_seconds": 6.0,
+    "amplitude_range": 10
   },
   "process": {
     "detrend": true,

@@ -158,7 +158,7 @@ class ControlPanel(QWidget):
         self._refresh_spin.setRange(20, 200)
         self._refresh_spin.setValue(50)
         self._refresh_spin.setSuffix(" ms")
-        display_layout.addRow("Refresh:", self._refresh_spin)
+        display_layout.addRow("刷新间隔:", self._refresh_spin)
         return display_group
 
     def _build_recorder_group(self):

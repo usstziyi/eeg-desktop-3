@@ -36,10 +36,7 @@ class EEGWidget(pg.GraphicsLayoutWidget):
         self.setBackground("k")
         self._plots = {}
         self._curves = {}
-        self._sampling_rate = 250
-        self._window_time = 5.0
-        self._buffer_size = int(self._sampling_rate * self._window_time)
-        self._ring_buffers = {}
+
         font = QtGui.QFont()
         font.setPointSize(10)
 
@@ -63,7 +60,6 @@ class EEGWidget(pg.GraphicsLayoutWidget):
 
             curve = plot.plot(pen=pg.mkPen(color, width=1))
             self._curves[i] = curve
-            self._ring_buffers[i] = np.zeros(self._buffer_size, dtype=np.float64)
 
             if i == 0:
                 self._first_plot = plot
@@ -92,6 +88,13 @@ class EEGWidget(pg.GraphicsLayoutWidget):
             plot.setYRange(-value, value, padding=0)
             ticks = [[(-value, str(-value)), (value, str(value))]]
             plot.getAxis("left").setTicks(ticks)
+        
+
+    def updata_data(self, times, eeg_data):
+        if eeg_data.size == 0 or eeg_data.shape[1] == 0:
+            return
+        for i in range(min(self._n_channels, eeg_data.shape[0])):
+            self._curves[i].setData(times, eeg_data[i, :])
 
 
 
