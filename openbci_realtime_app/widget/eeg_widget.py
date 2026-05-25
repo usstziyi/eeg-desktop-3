@@ -34,8 +34,8 @@ class EEGWidget(pg.GraphicsLayoutWidget):
         self._curves = {}
         self._n_channels = n_channels
         self._sampling_rate = 250
-        self._time_window = 5.0
-        self._buffer_size = int(self._sampling_rate * self._time_window)
+        self._window_time = 5.0
+        self._buffer_size = int(self._sampling_rate * self._window_time)
         self._ring_buffers = {}
 
         for i in range(n_channels):
@@ -77,8 +77,8 @@ class EEGWidget(pg.GraphicsLayoutWidget):
             ticks = [[(-value, str(-value)), (value, str(value))]]
             plot.getAxis("left").setTicks(ticks)
 
-    def set_time_window(self, value):
-        self._time_window = value
+    def set_window_time(self, value):
+        self._window_time = value
         self._resize_buffers()
 
     def set_sampling_rate(self, value):
@@ -86,7 +86,7 @@ class EEGWidget(pg.GraphicsLayoutWidget):
         self._resize_buffers()
 
     def _resize_buffers(self):
-        new_size = int(self._sampling_rate * self._time_window)
+        new_size = int(self._sampling_rate * self._window_time)
         if new_size == self._buffer_size:
             return
 

@@ -32,7 +32,7 @@ class ControlPanel(QWidget):
     record_toggled = Signal(bool)
     config_changed = Signal(dict)
 
-    def __init__(self, parent: QWidget | None = None):
+    def __init__(self, settings=None, parent: QWidget | None = None):
         super().__init__(parent)
         self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Preferred)
         main_layout = QVBoxLayout(self)
@@ -52,6 +52,9 @@ class ControlPanel(QWidget):
         main_layout.addWidget(recorder_group)
 
         self._connect_signals()
+
+        if settings is not None:
+            self.load_settings(settings)
         
     
     def _build_device_group(self):
@@ -198,6 +201,59 @@ class ControlPanel(QWidget):
 
         self._record_original_signal.toggled.connect(self._emit_config)
         self._record_processed_signal.toggled.connect(self._emit_config)
+
+    def load_settings(self, settings) -> None:
+        self._device_combo.setCurrentText(
+            settings.get("device", "name", default="synthetic")
+        )
+        # 使用构造函数初始化结果
+        # self._port_combo.setCurrentText(
+        #     settings.get("device", "serial_port", default="")
+        # )
+
+        self._detrend_check.setChecked(
+            settings.get("process", "detrend", default=True)
+        )
+        self._bp_low_spin.setValue(
+            settings.get("process", "bp_low_hz", default=0.1)
+        )
+        self._bp_high_spin.setValue(
+            settings.get("process", "bp_high_hz", default=45.0)
+        )
+        notch_hz = settings.get("process", "notch_hz", default=50.0)
+        if notch_hz == 0.0:
+            self._notch_combo.setCurrentText("None")
+        elif notch_hz == 60.0:
+            self._notch_combo.setCurrentText("60 Hz")
+        else:
+            self._notch_combo.setCurrentText("50 Hz")
+
+        self._window_type.setCurrentText(
+            settings.get("spectral", "window_type", default="Hamming")
+        )
+        self._spectral_time.setValue(
+            settings.get("spectral", "spectral_time", default=0.5)
+        )
+        self._overlap_ratio.setValue(
+            settings.get("spectral", "overlap_ratio", default=10)
+        )
+
+        self._window_time_spin.setValue(
+            settings.get("display", "window_seconds", default=4.0)
+        )
+        self._amplitude_spin.setValue(
+            settings.get("display", "amplitude_range", default=100)
+        )
+        self._refresh_spin.setValue(
+            settings.get("display", "refresh_ms", default=50)
+        )
+
+        self._record_original_signal.setChecked(
+            settings.get("recording", "record_original", default=False)
+        )
+        self._record_processed_signal.setChecked(
+            settings.get("recording", "record_processed", default=False)
+        )
 
     @Slot(bool)
     def set_connected(self, connected: bool) -> None:

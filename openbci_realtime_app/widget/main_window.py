@@ -7,6 +7,7 @@ from PySide6.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QMainWindow,
+    QMessageBox,
     QSplitter,
     QTabWidget,
     QTableView,
@@ -88,7 +89,7 @@ class MainWindow(QMainWindow):
 
     
     def _setup_left_panel(self):
-        self._control_panel = ControlPanel()
+        self._control_panel = ControlPanel(settings=self._settings)
         return self._control_panel
 
 
@@ -182,11 +183,11 @@ class MainWindow(QMainWindow):
 
     def _on_connect(self) -> None:
         try:
-            mode = self._settings.get("device", "name", default="synthetic")
+            name = self._settings.get("device", "name", default="synthetic")
             port = self._settings.get("device", "serial_port", default="")
-            timeout = self._settings.get("device", "timeout", default=10)
+            timeout = self._settings.get("device", "timeout", default=5)
 
-            board = create_board(mode, serial_port=port, timeout=timeout)
+            board = create_board(name, serial_port=port, timeout=timeout)
             session = BoardSession(board)
             session.prepare()
 
@@ -194,18 +195,51 @@ class MainWindow(QMainWindow):
             self._control_panel.set_connected(True)
 
             window_s = self._settings.get("display", "window_seconds", default=4.0)
-            self.eeg_widget.set_time_window(window_s)
+            self.eeg_widget.set_window_time(window_s)
 
-            y_scale = self._settings.get("display", "amplitude_range", default=100)
-            self.eeg_widget.set_y_range(y_scale)
+            amplitude_range = self._settings.get("display", "amplitude_range", default=100)
+            self.eeg_widget.set_y_range(amplitude_range)
+
+            print(window_s)
+            print(amplitude_range)
 
             self._elapsed_time = 0.0
             self._prev_board_time = 0.0
             self._raw_buffer = np.array([])
             self._time_buffer = np.array([])
 
-        except Exception:
-            pass
+            self._show_board_info(session, name)
+
+        except Exception as e:
+            error_msg = str(e).lower()
+            if "timeout" in error_msg:
+                QMessageBox.warning(
+                    self,
+                    "连接超时",
+                    f"连接设备超时（{timeout} 秒）。\n请检查设备连接和串口设置。",
+                )
+            else:
+                QMessageBox.critical(
+                    self,
+                    "连接失败",
+                    f"无法连接到设备。\n错误信息：{e}",
+                )
+
+    def _show_board_info(self, session: BoardSession, name: str) -> None:
+        eeg_names = session.eeg_names
+        info_lines = [
+            f"设备名称：{name}",
+            f"采样率：{session.sampling_rate} Hz",
+            f"EEG 通道数：{session.num_eeg_channels}",
+        ]
+        if eeg_names:
+            info_lines.append(f"EEG 通道：{', '.join(eeg_names)}")
+
+        QMessageBox.information(
+            self,
+            "连接成功",
+            "\n".join(info_lines),
+        )
 
     def _on_disconnect(self) -> None:
         self._on_stop()
@@ -344,10 +378,8 @@ class MainWindow(QMainWindow):
         else:
             self._recorder.stop()
 
-    def _on_config_changed(self, updates: dict) -> None:
-        
+    def _on_config_changed(self, updates: dict) -> None:      
         for key, value in updates.items():
-            print(f"key:{value}")
             parts = key.split(".")
             self._settings.set(value, *parts)
 
@@ -355,7 +387,7 @@ class MainWindow(QMainWindow):
         # self._refresh_ms = self._settings.get("display", "refresh_ms", default=50)
         # self._timer.setInterval(self._refresh_ms)
         # window_s = self._settings.get("display", "window_seconds", default=4.0)
-        # self.eeg_widget.set_time_window(window_s)
+        # self.eeg_widget.set_window_time(window_s)
         # y_scale = self._settings.get("display", "amplitude_range", default=100)
         # self.eeg_widget.set_y_range(y_scale)
         # self._psd_interval = max(4, int(200 / max(self._refresh_ms, 1)))
