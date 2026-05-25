@@ -26,26 +26,39 @@ class ControlPanel(QWidget):
     def __init__(self, parent: QWidget | None = None):
         super().__init__(parent)
         self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Preferred)
-
         main_layout = QVBoxLayout(self)
 
-        board_group = QGroupBox("Board")
-        board_layout = QFormLayout(board_group)
-        self._mode_combo = QComboBox()
-        self._mode_combo.addItems(["synthetic", "cyton"])
-        board_layout.addRow("Mode:", self._mode_combo)
-        self._port_edit = QLineEdit("COM3")
-        board_layout.addRow("Port:", self._port_edit)
+        device_group = self._build_device_group()
+        stream_group = self._build_stream_group()
+        process_group = self._build_process_group()
+        display_group = self._build_display_group()
+        recorder_group = self._build_recorder_group()
+        main_layout.addWidget(device_group)
+        main_layout.addWidget(stream_group)
+        main_layout.addWidget(process_group)
+        main_layout.addWidget(display_group)
+        main_layout.addWidget(recorder_group)
+        main_layout.addStretch(1)
+    
+    def _build_device_group(self):
+        device_group = QGroupBox("设备")
+        device_layout = QFormLayout(device_group)
+        self._device_combo = QComboBox()
+        self._device_combo.addItems(["synthetic", "cyton"])
+        device_layout.addRow("名称:", self._device_combo)
+        self._port_combo = QComboBox()
+        device_layout.addRow("串口:", self._port_combo)
         self._connect_btn = QPushButton("Connect")
         self._disconnect_btn = QPushButton("Disconnect")
         self._disconnect_btn.setEnabled(False)
         btn_row = QHBoxLayout()
         btn_row.addWidget(self._connect_btn)
         btn_row.addWidget(self._disconnect_btn)
-        board_layout.addRow(btn_row)
-        main_layout.addWidget(board_group)
-
-        stream_group = QGroupBox("Stream")
+        device_layout.addRow(btn_row)
+        return device_group
+        
+    def _build_stream_group(self):
+        stream_group = QGroupBox("信号")
         stream_layout = QFormLayout(stream_group)
         self._start_btn = QPushButton("Start")
         self._stop_btn = QPushButton("Stop")
@@ -55,12 +68,41 @@ class ControlPanel(QWidget):
         stream_btn_row.addWidget(self._start_btn)
         stream_btn_row.addWidget(self._stop_btn)
         stream_layout.addRow(stream_btn_row)
+        return stream_group
+        
 
-        self._record_check = QCheckBox("Record")
-        stream_layout.addRow(self._record_check)
-        main_layout.addWidget(stream_group)
+    def _build_process_group(self):
+        process_group = QGroupBox("预处理")
+        process_layout = QFormLayout(process_group)
 
-        display_group = QGroupBox("Display")
+        self._bp_low_spin = QDoubleSpinBox()
+        self._bp_low_spin.setRange(0.1, 20.0)
+        self._bp_low_spin.setValue(1.0)
+        self._bp_low_spin.setSuffix(" Hz")
+        self._bp_low_spin.setDecimals(1)
+        process_layout.addRow("BP Low:", self._bp_low_spin)
+
+        self._bp_high_spin = QDoubleSpinBox()
+        self._bp_high_spin.setRange(20.0, 100.0)
+        self._bp_high_spin.setValue(45.0)
+        self._bp_high_spin.setSuffix(" Hz")
+        self._bp_high_spin.setDecimals(1)
+        process_layout.addRow("BP High:", self._bp_high_spin)
+
+        self._notch_combo = QComboBox()
+        self._notch_combo.addItems(["50 Hz", "60 Hz", "None"])
+        process_layout.addRow("Notch:", self._notch_combo)
+
+        self._psd_win_spin = QDoubleSpinBox()
+        self._psd_win_spin.setRange(1.0, 10.0)
+        self._psd_win_spin.setValue(4.0)
+        self._psd_win_spin.setSuffix(" s")
+        process_layout.addRow("PSD Win:", self._psd_win_spin)
+        return process_group
+
+
+    def _build_display_group(self):
+        display_group = QGroupBox("显示设置")
         display_layout = QFormLayout(display_group)
         self._window_spin = QDoubleSpinBox()
         self._window_spin.setRange(2.0, 30.0)
@@ -78,38 +120,21 @@ class ControlPanel(QWidget):
         self._yscale_spin.setRange(10, 1000)
         self._yscale_spin.setValue(100)
         self._yscale_spin.setSuffix(" µV")
-        display_layout.addRow("Y Scale:", self._yscale_spin)
-        main_layout.addWidget(display_group)
+        display_layout.addRow("Y轴范围",self._yscale_spin)
+        return display_group
 
-        proc_group = QGroupBox("Processing")
-        proc_layout = QFormLayout(proc_group)
-        self._bp_low_spin = QDoubleSpinBox()
-        self._bp_low_spin.setRange(0.1, 20.0)
-        self._bp_low_spin.setValue(1.0)
-        self._bp_low_spin.setSuffix(" Hz")
-        self._bp_low_spin.setDecimals(1)
-        proc_layout.addRow("BP Low:", self._bp_low_spin)
+    def _build_recorder_group(self):
+        recorder_group = QGroupBox("录制")
+        recorder_layout = QFormLayout(recorder_group)
+        self._record_check = QCheckBox("Record")
+        self.recorder_button = QPushButton("录制")
+        recorder_layout.addRow(self.recorder_button)
+        return recorder_group
 
-        self._bp_high_spin = QDoubleSpinBox()
-        self._bp_high_spin.setRange(20.0, 100.0)
-        self._bp_high_spin.setValue(45.0)
-        self._bp_high_spin.setSuffix(" Hz")
-        self._bp_high_spin.setDecimals(1)
-        proc_layout.addRow("BP High:", self._bp_high_spin)
 
-        self._notch_combo = QComboBox()
-        self._notch_combo.addItems(["50 Hz", "60 Hz", "None"])
-        proc_layout.addRow("Notch:", self._notch_combo)
 
-        self._psd_win_spin = QDoubleSpinBox()
-        self._psd_win_spin.setRange(1.0, 10.0)
-        self._psd_win_spin.setValue(4.0)
-        self._psd_win_spin.setSuffix(" s")
-        proc_layout.addRow("PSD Win:", self._psd_win_spin)
-        main_layout.addWidget(proc_group)
 
-        main_layout.addStretch()
-
+    def _connect_signals(self):
         self._connect_btn.clicked.connect(self.connect_requested.emit)
         self._disconnect_btn.clicked.connect(self.disconnect_requested.emit)
         self._start_btn.clicked.connect(self.start_requested.emit)

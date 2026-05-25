@@ -60,8 +60,6 @@ class MainWindow(QMainWindow):
         self.left_dock = QDockWidget("控制面板")
         self.left_dock.setObjectName("left_dock")
         self.left_dock.setTitleBarWidget(QWidget())
-        # self.left_dock.setMinimumWidth(220)
-        # self.left_dock.setMaximumWidth(300)
         left_widget = self._setup_left_panel()
         self.left_dock.setWidget(left_widget)
         self.addDockWidget(Qt.LeftDockWidgetArea, self.left_dock)
@@ -125,7 +123,7 @@ class MainWindow(QMainWindow):
         bottom_tab_widget = QTabWidget()
         self.spectrogram_widget = QWidget()
         self.band_power_widget = QWidget()
-        bottom_tab_widget.addTab(self.spectrogram_widget, "视频图")
+        bottom_tab_widget.addTab(self.spectrogram_widget, "时频图")
         bottom_tab_widget.addTab(self.band_power_widget, "频带能量图")
 
 
