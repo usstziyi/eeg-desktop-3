@@ -2,8 +2,8 @@ import sys
 
 from PySide6.QtWidgets import QApplication
 
-from widget.main_window import MainWindow
-from parameter.settings import load_default_settings
+from widget import MainWindow
+from parameter import load_default_settings
 
 
 def main() -> None:

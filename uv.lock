@@ -29,7 +29,7 @@ wheels = [
 ]
 
 [[package]]
-name = "eeg-desktop-3"
+name = "neuroworkbench-4"
 version = "0.1.0"
 source = { virtual = "." }
 dependencies = [

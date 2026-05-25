@@ -5,7 +5,7 @@ from brainflow.data_filter import (
     FilterTypes,
     NoiseTypes,
 )
-from processing.types import FilterConfig
+from .types import FilterConfig
 
 
 def apply_filter_chain(

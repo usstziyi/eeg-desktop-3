@@ -8,16 +8,15 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from acquisition.board_factory import create_board
-from acquisition.board_session import BoardSession
-from widget.control_panel import ControlPanel
-from widget.eeg_plot_widget import EegPlotWidget
-from widget.spectrum_widget import SpectrumWidget
-from widget.band_power_widget import BandPowerWidget
-from parameter.settings import Settings
-from processing.processor_worker import ProcessingWorker
-from processing.types import FilterConfig
-from recording.recorder import Recorder
+from acquisition import BoardSession, create_board
+from parameter import Settings
+from processing import FilterConfig, ProcessingWorker
+from recording import Recorder
+
+from .control_panel import ControlPanel
+from .eeg_plot_widget import EegPlotWidget
+from .spectrum_widget import SpectrumWidget
+from .band_power_widget import BandPowerWidget
 
 
 class MainWindow(QMainWindow):

@@ -1,9 +1,6 @@
 import numpy as np
 
-from processing.filters import apply_filter_chain
-from processing.types import FilterConfig
-from processing.spectrum import compute_psd_welch
-from processing.band_power import compute_band_powers
+from processing import apply_filter_chain, compute_band_powers, compute_psd_welch, FilterConfig
 
 
 def _make_sine(freq: float, sr: float, duration: float, noise: float = 0.0) -> np.ndarray:

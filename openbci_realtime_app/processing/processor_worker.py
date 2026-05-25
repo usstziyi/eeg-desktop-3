@@ -1,10 +1,10 @@
 import numpy as np
 from PySide6.QtCore import QObject, Signal, Slot
 
-from processing.types import FilterConfig, ProcessedData
-from processing.filters import apply_filter_chain
-from processing.spectrum import compute_psd_welch
-from processing.band_power import compute_band_powers
+from .types import FilterConfig, ProcessedData
+from .filters import apply_filter_chain
+from .spectrum import compute_psd_welch
+from .band_power import compute_band_powers
 
 
 class ProcessingWorker(QObject):
