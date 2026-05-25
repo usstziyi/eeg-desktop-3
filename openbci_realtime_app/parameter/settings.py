@@ -4,26 +4,29 @@ from copy import deepcopy
 from typing import Any
 
 _DEFAULT_CONFIG = {
-    "board": {
-        "mode": "synthetic",
-        "serial_port": "COM3",
-        "timeout": 10,
+    "device": {
+        "name": "synthetic",
+        "serial_port": "",
     },
     "display": {
-        "window_seconds": 4,
         "refresh_ms": 50,
-        "y_scale_uv": 100,
+        "window_seconds": 4.0,
+        "amplitude_range": 100
     },
-    "processing": {
-        "bandpass_low_hz": 1.0,
-        "bandpass_high_hz": 45.0,
+    "process": {
+        "detrend": True,
+        "bp_low_hz": 0.1,
+        "bp_high_hz": 45.0,
         "notch_hz": 50.0,
-        "psd_window_seconds": 4,
-        "welch_overlap_ratio": 0.5,
+    },
+    "spectral": {
+        "window_type": "Hamming",
+        "spectral_time": 0.5,
+        "overlap_ratio": 10,
     },
     "recording": {
-        "enabled": False,
-        "directory": "recordings",
+        "record_original": False,
+        "record_processed": False,
     },
 }
 
@@ -80,7 +83,15 @@ class Settings:
             else:
                 base[key] = val
 
-
+"""
+_DEFAULT_CONFIG (代码硬编码)
+        ↓ merge
+default_settings.json (可分发)
+        ↓ merge
+user_settings.json (用户私有，可选)
+        ↓
+     最终配置
+"""
 def load_default_settings() -> Settings:
     settings = Settings()
     default_path = os.path.join(os.path.dirname(__file__), "default_settings.json")

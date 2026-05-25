@@ -105,7 +105,6 @@ class ControlPanel(QWidget):
         self._bp_high_spin.setValue(45.0)
         self._bp_high_spin.setSingleStep(0.1)
         self._bp_high_spin.setSuffix(" Hz")
-        self._bp_high_spin.setDecimals(1)
         process_layout.addRow("高通滤波:", self._bp_high_spin)
         # notch
         self._notch_combo = QComboBox()
@@ -181,6 +180,8 @@ class ControlPanel(QWidget):
         self._stop_stream_btn.clicked.connect(self.stop_requested)
         self._record_check.toggled.connect(self.record_toggled)
 
+        self._device_combo.currentTextChanged.connect(self._emit_config)
+        self._port_combo.currentTextChanged.connect(self._emit_config)
 
         self._detrend_check.toggled.connect(self._emit_config)
         self._bp_low_spin.valueChanged.connect(self._emit_config)
@@ -235,7 +236,7 @@ class ControlPanel(QWidget):
             
             # display
             "display.window_seconds": self._window_time_spin.value(),
-            "display.y_scale_uv": self._amplitude_spin.value(),
+            "display.amplitude_range": self._amplitude_spin.value(),
             "display.refresh_ms": self._refresh_spin.value(),
 
             # recorder

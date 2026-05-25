@@ -1,3 +1,5 @@
+import os
+
 import numpy as np
 from PySide6.QtCore import QSettings, QTimer, QThread, Qt
 from PySide6.QtWidgets import (
@@ -52,7 +54,7 @@ class MainWindow(QMainWindow):
         # self._init_timer()
         # self._init_processing_thread()
 
-        # self._connect_signals()
+        self._connect_signals()
 
     def _init_ui(self) -> None:
         self.setCorner(Qt.BottomLeftCorner, Qt.LeftDockWidgetArea)
@@ -86,8 +88,8 @@ class MainWindow(QMainWindow):
 
     
     def _setup_left_panel(self):
-        widget = ControlPanel()
-        return widget
+        self._control_panel = ControlPanel()
+        return self._control_panel
 
 
     def _setup_center_panel(self):
@@ -150,7 +152,6 @@ class MainWindow(QMainWindow):
 
     def _init_channels(self) -> None:
         num_channels = 8
-        self._eeg_plot.setup_channels(num_channels)
         self._spectrum_widget.setup_channels(num_channels)
         self._band_power_widget.setup_channels(num_channels)
 
@@ -181,9 +182,9 @@ class MainWindow(QMainWindow):
 
     def _on_connect(self) -> None:
         try:
-            mode = self._settings.get("board", "mode", default="synthetic")
-            port = self._settings.get("board", "serial_port", default="COM3")
-            timeout = self._settings.get("board", "timeout", default=10)
+            mode = self._settings.get("device", "name", default="synthetic")
+            port = self._settings.get("device", "serial_port", default="")
+            timeout = self._settings.get("device", "timeout", default=10)
 
             board = create_board(mode, serial_port=port, timeout=timeout)
             session = BoardSession(board)
@@ -193,11 +194,10 @@ class MainWindow(QMainWindow):
             self._control_panel.set_connected(True)
 
             window_s = self._settings.get("display", "window_seconds", default=4.0)
-            self._eeg_plot.set_window_seconds(window_s)
+            self.eeg_widget.set_time_window(window_s)
 
-            y_scale = self._settings.get("display", "y_scale_uv", default=100)
-            y_range = y_scale * 2
-            self._eeg_plot.set_y_range(-y_range, y_range)
+            y_scale = self._settings.get("display", "amplitude_range", default=100)
+            self.eeg_widget.set_y_range(y_scale)
 
             self._elapsed_time = 0.0
             self._prev_board_time = 0.0
@@ -213,7 +213,6 @@ class MainWindow(QMainWindow):
             self._session.release()
             self._session = None
         self._control_panel.set_connected(False)
-        self._eeg_plot.setup_channels(8)
         self._spectrum_widget.setup_channels(8)
         self._band_power_widget.setup_channels(8)
 
@@ -301,7 +300,7 @@ class MainWindow(QMainWindow):
                 t_offset = 0.0
             display_times = self._time_buffer - t_offset
 
-            self._eeg_plot.update_data(self._raw_buffer, display_times)
+            self.eeg_widget.update_data(self._raw_buffer)
 
             self._psd_counter += 1
             if self._psd_counter >= self._psd_interval:
@@ -346,23 +345,26 @@ class MainWindow(QMainWindow):
             self._recorder.stop()
 
     def _on_config_changed(self, updates: dict) -> None:
+        
         for key, value in updates.items():
+            print(f"key:{value}")
             parts = key.split(".")
             self._settings.set(value, *parts)
-        self._refresh_ms = self._settings.get("display", "refresh_ms", default=50)
-        self._timer.setInterval(self._refresh_ms)
-        window_s = self._settings.get("display", "window_seconds", default=4.0)
-        self._eeg_plot.set_window_seconds(window_s)
-        y_scale = self._settings.get("display", "y_scale_uv", default=100)
-        y_range = y_scale * 2
-        self._eeg_plot.set_y_range(-y_range, y_range)
-        self._psd_interval = max(4, int(200 / max(self._refresh_ms, 1)))
+
+
+        # self._refresh_ms = self._settings.get("display", "refresh_ms", default=50)
+        # self._timer.setInterval(self._refresh_ms)
+        # window_s = self._settings.get("display", "window_seconds", default=4.0)
+        # self.eeg_widget.set_time_window(window_s)
+        # y_scale = self._settings.get("display", "amplitude_range", default=100)
+        # self.eeg_widget.set_y_range(y_scale)
+        # self._psd_interval = max(4, int(200 / max(self._refresh_ms, 1)))
 
     def _make_filter_config(self) -> FilterConfig:
         return FilterConfig(
-            bandpass_low=self._settings.get("processing", "bandpass_low_hz", default=1.0),
-            bandpass_high=self._settings.get("processing", "bandpass_high_hz", default=45.0),
-            notch=self._settings.get("processing", "notch_hz", default=50.0),
+            bandpass_low=self._settings.get("process", "bp_low_hz", default=0.1),
+            bandpass_high=self._settings.get("process", "bp_high_hz", default=45.0),
+            notch=self._settings.get("process", "notch_hz", default=50.0),
             sampling_rate=self._session.sampling_rate if self._session else 250.0,
         )
 
@@ -370,19 +372,22 @@ class MainWindow(QMainWindow):
         self._app_settings.setValue("window/geometry", self.saveGeometry())
         self._app_settings.setValue("window/state", self.saveState())
 
-        self._timer.stop()
+        # self._timer.stop()
 
-        if self._recorder.is_recording:
-            self._recorder.stop()
+        # if self._recorder.is_recording:
+        #     self._recorder.stop()
 
-        if self._session:
-            self._session.release()
+        # if self._session:
+        #     self._session.release()
 
-        self._processing_thread.quit()
-        self._processing_thread.wait(3000)
+        # self._processing_thread.quit()
+        # self._processing_thread.wait(3000)
 
         try:
-            self._settings.save()
+            user_path = os.path.join(
+                os.path.dirname(__file__), "..", "parameter", "user_settings.json"
+            )
+            self._settings.save(user_path)
         except Exception:
             pass
 
