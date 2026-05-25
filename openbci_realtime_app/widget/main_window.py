@@ -51,14 +51,14 @@ class MainWindow(QMainWindow):
         # self._connect_signals()
 
     def _init_ui(self) -> None:
-        # 左下角区域归属给左侧 dock
         self.setCorner(Qt.BottomLeftCorner, Qt.LeftDockWidgetArea)
+        self.setCorner(Qt.BottomRightCorner, Qt.RightDockWidgetArea)
 
         self.left_dock = QDockWidget("控制面板")
         self.left_dock.setObjectName("left_dock")
         self.left_dock.setTitleBarWidget(QWidget())
-        self.left_dock.setMinimumWidth(220)
-        self.left_dock.setMaximumWidth(300)
+        # self.left_dock.setMinimumWidth(220)
+        # self.left_dock.setMaximumWidth(300)
         left_widget = self._setup_left_panel()
         self.left_dock.setWidget(left_widget)
         self.addDockWidget(Qt.LeftDockWidgetArea, self.left_dock)
@@ -118,7 +118,8 @@ class MainWindow(QMainWindow):
     def _setup_bottom_panel(self):
         widget = QWidget()
         layout = QHBoxLayout(widget)
-        layout.setContentsMargins(4, 4, 4, 4)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(6)
         
         bottom_tab_widget = QTabWidget()
         self.spectrogram_widget = QWidget()

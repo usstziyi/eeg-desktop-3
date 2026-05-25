@@ -8,6 +8,7 @@ from PySide6.QtWidgets import (
     QHBoxLayout,
     QLineEdit,
     QPushButton,
+    QSizePolicy,
     QSpinBox,
     QVBoxLayout,
     QWidget,
@@ -24,7 +25,7 @@ class ControlPanel(QWidget):
 
     def __init__(self, parent: QWidget | None = None):
         super().__init__(parent)
-        self.setMaximumWidth(320)
+        self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Preferred)
 
         main_layout = QVBoxLayout(self)
 
