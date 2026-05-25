@@ -1,5 +1,6 @@
 import sys
 
+from PySide6.QtCore import QSettings
 from PySide6.QtWidgets import QApplication
 
 from widget import MainWindow
@@ -10,7 +11,9 @@ def main() -> None:
     settings = load_default_settings()
     app = QApplication(sys.argv)
     app.setStyle("fusion")
-    app.setApplicationName("OpenBCI EEG Monitor")
+    app.setOrganizationName("NeuroWorkbench")
+    app.setApplicationName("NeuroWorkbench")
+    QSettings.setDefaultFormat(QSettings.Format.IniFormat)
     window = MainWindow(settings)
     window.show()
     sys.exit(app.exec())

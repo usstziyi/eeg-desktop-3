@@ -1,5 +1,5 @@
 import numpy as np
-from PySide6.QtCore import QTimer, QThread, Qt
+from PySide6.QtCore import QSettings, QTimer, QThread, Qt
 from PySide6.QtWidgets import (
     QDockWidget,
     QHBoxLayout,
@@ -43,8 +43,11 @@ class MainWindow(QMainWindow):
         self._psd_interval: int = 4
         self._refresh_ms: int = 50
 
+        self._app_settings = QSettings()
+
         self._init_ui()
         self._setup_menubar()
+        self._restore_window_state()
         # self._init_timer()
         # self._init_processing_thread()
 
@@ -72,7 +75,6 @@ class MainWindow(QMainWindow):
         right_widget = self._setup_right_panel()
         self.right_dock.setWidget(right_widget)
         self.addDockWidget(Qt.RightDockWidgetArea, self.right_dock)
-        self.right_dock.hide()
 
         self.bottom_dock = QDockWidget("底部面板")
         self.bottom_dock.setObjectName("bottom_dock")
@@ -80,7 +82,6 @@ class MainWindow(QMainWindow):
         bottom_widget = self._setup_bottom_panel()
         self.bottom_dock.setWidget(bottom_widget)
         self.addDockWidget(Qt.BottomDockWidgetArea, self.bottom_dock)
-        self.bottom_dock.hide()
 
 
 
@@ -139,6 +140,14 @@ class MainWindow(QMainWindow):
         view_menu.addAction(self.left_dock.toggleViewAction())
         view_menu.addAction(self.right_dock.toggleViewAction())
         view_menu.addAction(self.bottom_dock.toggleViewAction())
+
+    def _restore_window_state(self) -> None:
+        geometry = self._app_settings.value("window/geometry")
+        if geometry is not None:
+            self.restoreGeometry(geometry)
+        state = self._app_settings.value("window/state")
+        if state is not None:
+            self.restoreState(state)
 
     def _init_channels(self) -> None:
         num_channels = 8
@@ -359,6 +368,9 @@ class MainWindow(QMainWindow):
         )
 
     def closeEvent(self, event) -> None:
+        self._app_settings.setValue("window/geometry", self.saveGeometry())
+        self._app_settings.setValue("window/state", self.saveState())
+
         self._timer.stop()
 
         if self._recorder.is_recording:
