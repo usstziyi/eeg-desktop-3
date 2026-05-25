@@ -3,8 +3,8 @@ import sys
 
 from PySide6.QtWidgets import QApplication
 
-from app.main_window import MainWindow
-from config.settings import load_default_settings
+from widget.main_window import MainWindow
+from parameter.settings import load_default_settings
 
 
 def setup_logging() -> None:

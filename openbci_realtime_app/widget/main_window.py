@@ -13,12 +13,12 @@ from PySide6.QtWidgets import (
 
 from acquisition.board_factory import create_board
 from acquisition.board_session import BoardSession
-from app.control_panel import ControlPanel
-from app.eeg_plot_widget import EegPlotWidget
-from app.spectrum_widget import SpectrumWidget
-from app.band_power_widget import BandPowerWidget
-from app.status_bar import StatusBar
-from config.settings import Settings
+from widget.control_panel import ControlPanel
+from widget.eeg_plot_widget import EegPlotWidget
+from widget.spectrum_widget import SpectrumWidget
+from widget.band_power_widget import BandPowerWidget
+from widget.status_bar import StatusBar
+from parameter.settings import Settings
 from processing.processor_worker import ProcessingWorker
 from processing.types import FilterConfig
 from recording.recorder import Recorder
