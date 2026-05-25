@@ -7,6 +7,7 @@ from PySide6.QtWidgets import (
     QMainWindow,
     QSplitter,
     QTabWidget,
+    QTableView,
     QVBoxLayout,
     QWidget,
 )
@@ -43,6 +44,7 @@ class MainWindow(QMainWindow):
         self._refresh_ms: int = 50
 
         self._init_ui()
+        self._setup_menubar()
         # self._init_timer()
         # self._init_processing_thread()
 
@@ -50,7 +52,7 @@ class MainWindow(QMainWindow):
 
     def _init_ui(self) -> None:
         # 左下角区域归属给左侧 dock
-        # self.setCorner(Qt.BottomLeftCorner, Qt.LeftDockWidgetArea)
+        self.setCorner(Qt.BottomLeftCorner, Qt.LeftDockWidgetArea)
 
         self.left_dock = QDockWidget("控制面板")
         self.left_dock.setObjectName("left_dock")
@@ -117,10 +119,25 @@ class MainWindow(QMainWindow):
         widget = QWidget()
         layout = QHBoxLayout(widget)
         layout.setContentsMargins(4, 4, 4, 4)
-        label = QLabel("底部面板 — 待设计")
-        label.setAlignment(Qt.AlignCenter)
-        layout.addWidget(label)
+        
+        bottom_tab_widget = QTabWidget()
+        self.spectrogram_widget = QWidget()
+        self.band_power_widget = QWidget()
+        bottom_tab_widget.addTab(self.spectrogram_widget, "视频图")
+        bottom_tab_widget.addTab(self.band_power_widget, "频带能量图")
+
+
+        layout.addWidget(bottom_tab_widget)
         return widget
+
+    def _setup_menubar(self):
+        menubar = self.menuBar()
+
+        view_menu = menubar.addMenu("视图(&V)")
+
+        view_menu.addAction(self.left_dock.toggleViewAction())
+        view_menu.addAction(self.right_dock.toggleViewAction())
+        view_menu.addAction(self.bottom_dock.toggleViewAction())
 
     def _init_channels(self) -> None:
         num_channels = 8
