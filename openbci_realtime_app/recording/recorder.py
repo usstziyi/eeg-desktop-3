@@ -7,6 +7,26 @@ from datetime import datetime
 
 import numpy as np
 
+"""
+用户点 Record:
+  start() → _writer_loop 启动
+
+ ══════ 录制中 ══════
+  主线程: put → put → put → put → put → ...
+  写线程:   get → write → get → write → ...
+
+ 用户点 Stop Record:
+  stop() → _is_recording=False, stop_event.set()
+  主线程: join(timeout=5.0)
+
+  写线程: 
+    ① 跳出 while not stop_event 循环
+    ② get_nowait 收割剩余 1-2 个 batch
+    ③ flush + close
+    ④ 线程退出
+
+  主线程: join 返回（线程已结束）
+"""
 
 class Recorder:
     def __init__(self, directory: str = "recordings"):
@@ -39,7 +59,11 @@ class Recorder:
         self._writer.writerow(header)
         self._is_recording = True
         self._stop_event.clear()
+        # daemon=True + join() 是标准组合：正常停止时 join 等它优雅退出，
+        # 异常退出时系统直接回收，不拖泥带水
         self._thread = threading.Thread(target=self._writer_loop, daemon=True)
+        # start() 不是直接调用 _writer_loop ，而是向操作系统申请创建一个 真正的 OS 级线程 。
+        # 然后 Python 解释器在新线程的上下文中开始执行 self._writer_loop()
         self._thread.start()
         return filename
 
@@ -49,6 +73,8 @@ class Recorder:
         self._is_recording = False
         self._stop_event.set()
         if self._thread and self._thread.is_alive():
+            # daemon=True + join() 是标准组合：正常停止时 join 等它优雅退出，
+            # 异常退出时系统直接回收，不拖泥带水
             self._thread.join(timeout=5.0)
 
     def write_samples(self, data: np.ndarray, sampling_rate: float = 250.0, marker: int = 0) -> None:
@@ -59,25 +85,33 @@ class Recorder:
         self._queue.put((data.copy(), sampling_rate, marker))
 
     def _writer_loop(self) -> None:
+        # 阶段一：正常运行
         while not self._stop_event.is_set():
             try:
+                # 从队列中获取数据，最多等待0.1秒；若超时则抛出 queue.Empty 异常
+                # 如果队列有数据立即返回，返回一组
                 item = self._queue.get(timeout=0.1)
                 self._write_batch(*item)
             except queue.Empty:
                 continue
-
+        
+        # 阶段二：排空残留数据
         while True:
             try:
+                # get_nowait() 非阻塞地收割，直到队列为空
                 item = self._queue.get_nowait()
                 self._write_batch(*item)
             except queue.Empty:
                 break
-
+        
+        # 阶段三：安全关闭文件
         if self._writer and self._file:
             try:
+                # Python 的 I/O 缓冲区强制写出到底层 OS 缓冲区
                 self._file.flush()
             except Exception:
                 pass
+            # 关闭文件句柄，释放资源
             self._file.close()
         self._file = None
         self._writer = None
