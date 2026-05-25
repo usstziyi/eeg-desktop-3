@@ -1,4 +1,4 @@
-from PySide6.QtCore import Signal
+from PySide6.QtCore import Signal, Slot
 from PySide6.QtWidgets import (
     QCheckBox,
     QComboBox,
@@ -50,6 +50,8 @@ class ControlPanel(QWidget):
         main_layout.addWidget(display_group)
         main_layout.addStretch(1)
         main_layout.addWidget(recorder_group)
+
+        self._connect_signals()
         
     
     def _build_device_group(self):
@@ -162,47 +164,52 @@ class ControlPanel(QWidget):
         recorder_layout = QFormLayout(recorder_group)
         self._record_check = QCheckBox("Record")
         self._record_original_signal = QCheckBox("原始信号")
-        self._record_process_signal = QCheckBox("实时信号")
-        self.recorder_button = QPushButton("录制")
+        self._record_processed_signal = QCheckBox("实时信号")
+        self._recorder_button = QPushButton("录制")
         recorder_layout.addRow(self._record_original_signal)
-        recorder_layout.addRow(self._record_process_signal)
-        recorder_layout.addRow(self.recorder_button)
+        recorder_layout.addRow(self._record_processed_signal)
+        recorder_layout.addRow(self._recorder_button)
         return recorder_group
 
 
 
 
     def _connect_signals(self):
-        self._connect_btn.clicked.connect(self.connect_requested.emit)
-        self._disconnect_btn.clicked.connect(self.disconnect_requested.emit)
-        self._start_btn.clicked.connect(self.start_requested.emit)
-        self._stop_btn.clicked.connect(self.stop_requested.emit)
-        self._record_check.toggled.connect(self.record_toggled.emit)
+        self._connect_btn.clicked.connect(self.connect_requested)
+        self._disconnect_btn.clicked.connect(self.disconnect_requested)
+        self._start_stream_btn.clicked.connect(self.start_requested)
+        self._stop_stream_btn.clicked.connect(self.stop_requested)
+        self._record_check.toggled.connect(self.record_toggled)
 
-        self._mode_combo.currentTextChanged.connect(self._on_mode_changed)
-        self._port_edit.textChanged.connect(self._emit_config)
-        self._window_spin.valueChanged.connect(self._emit_config)
-        self._refresh_spin.valueChanged.connect(self._emit_config)
-        self._yscale_spin.valueChanged.connect(self._emit_config)
+
+        self._detrend_check.toggled.connect(self._emit_config)
         self._bp_low_spin.valueChanged.connect(self._emit_config)
         self._bp_high_spin.valueChanged.connect(self._emit_config)
         self._notch_combo.currentTextChanged.connect(self._emit_config)
-        self._psd_win_spin.valueChanged.connect(self._emit_config)
 
+        self._window_type.currentTextChanged.connect(self._emit_config)
+        self._spectral_time.valueChanged.connect(self._emit_config)
+        self._overlap_ratio.valueChanged.connect(self._emit_config)
+
+        self._window_time_spin.valueChanged.connect(self._emit_config)
+        self._refresh_spin.valueChanged.connect(self._emit_config)
+        self._amplitude_spin.valueChanged.connect(self._emit_config)
+
+        self._record_original_signal.toggled.connect(self._emit_config)
+        self._record_processed_signal.toggled.connect(self._emit_config)
+
+    @Slot(bool)
     def set_connected(self, connected: bool) -> None:
         self._connect_btn.setEnabled(not connected)
         self._disconnect_btn.setEnabled(connected)
-        self._start_btn.setEnabled(connected)
-        self._mode_combo.setEnabled(not connected)
-        self._port_edit.setEnabled(not connected)
+        self._start_stream_btn.setEnabled(connected)
+        if not connected:
+            self._stop_stream_btn.setEnabled(False)
 
+    @Slot(bool)
     def set_streaming(self, streaming: bool) -> None:
-        self._start_btn.setEnabled(not streaming)
-        self._stop_btn.setEnabled(streaming)
-
-    def _on_mode_changed(self, text: str) -> None:
-        self._port_edit.setEnabled(text == "cyton")
-        self._emit_config()
+        self._start_stream_btn.setEnabled(not streaming)
+        self._stop_stream_btn.setEnabled(streaming)
 
     def _emit_config(self) -> None:
         notch_text = self._notch_combo.currentText()
@@ -211,13 +218,27 @@ class ControlPanel(QWidget):
         else:
             notch_hz = float(notch_text.split()[0])
         self.config_changed.emit({
-            "board.mode": self._mode_combo.currentText(),
-            "board.serial_port": self._port_edit.text(),
-            "display.window_seconds": self._window_spin.value(),
+            # device
+            "device.name": self._device_combo.currentText(),
+            "device.serial_port": self._port_combo.currentText(),
+
+            # process
+            "process.detrend": self._detrend_check.isChecked(),
+            "process.bp_low_hz": self._bp_low_spin.value(),
+            "process.bp_high_hz": self._bp_high_spin.value(),
+            "process.notch_hz": notch_hz,
+
+            # spectral
+            "spectral.window_type": self._window_type.currentText(),
+            "spectral.spectral_time": self._spectral_time.value(),
+            "spectral.overlap_ratio": self._overlap_ratio.value(),
+            
+            # display
+            "display.window_seconds": self._window_time_spin.value(),
+            "display.y_scale_uv": self._amplitude_spin.value(),
             "display.refresh_ms": self._refresh_spin.value(),
-            "display.y_scale_uv": self._yscale_spin.value(),
-            "processing.bandpass_low_hz": self._bp_low_spin.value(),
-            "processing.bandpass_high_hz": self._bp_high_spin.value(),
-            "processing.notch_hz": notch_hz,
-            "processing.psd_window_seconds": self._psd_win_spin.value(),
+
+            # recorder
+            "recording.record_original": self._record_original_signal.isChecked(),
+            "recording.record_processed": self._record_processed_signal.isChecked(),
         })
