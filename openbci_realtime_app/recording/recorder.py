@@ -1,5 +1,7 @@
 import csv
 import os
+import queue
+import threading
 import time
 from datetime import datetime
 
@@ -12,12 +14,14 @@ class Recorder:
         self._file = None
         self._writer = None
         self._is_recording = False
+        self._queue: queue.Queue = queue.Queue()
+        self._stop_event = threading.Event()
+        self._thread: threading.Thread | None = None
 
     @property
     def is_recording(self) -> bool:
         return self._is_recording
 
-    # 负责创建 CSV 文件并写入表头
     def start(self, channel_labels: list[str] | None = None) -> str:
         if self._is_recording:
             return ""
@@ -26,7 +30,6 @@ class Recorder:
         filename = os.path.join(self._directory, f"eeg_recording_{timestamp}.csv")
         self._file = open(filename, "w", newline="", encoding="utf-8")
         self._writer = csv.writer(self._file)
-        # 记录每个采样点的绝对时间
         header = ["timestamp"]
         if channel_labels:
             header += channel_labels
@@ -35,12 +38,41 @@ class Recorder:
         header.append("marker")
         self._writer.writerow(header)
         self._is_recording = True
+        self._stop_event.clear()
+        self._thread = threading.Thread(target=self._writer_loop, daemon=True)
+        self._thread.start()
         return filename
 
     def stop(self) -> None:
         if not self._is_recording:
             return
         self._is_recording = False
+        self._stop_event.set()
+        if self._thread and self._thread.is_alive():
+            self._thread.join(timeout=5.0)
+
+    def write_samples(self, data: np.ndarray, sampling_rate: float = 250.0, marker: int = 0) -> None:
+        if not self._is_recording:
+            return
+        if data.size == 0:
+            return
+        self._queue.put((data.copy(), sampling_rate, marker))
+
+    def _writer_loop(self) -> None:
+        while not self._stop_event.is_set():
+            try:
+                item = self._queue.get(timeout=0.1)
+                self._write_batch(*item)
+            except queue.Empty:
+                continue
+
+        while True:
+            try:
+                item = self._queue.get_nowait()
+                self._write_batch(*item)
+            except queue.Empty:
+                break
+
         if self._writer and self._file:
             try:
                 self._file.flush()
@@ -50,11 +82,8 @@ class Recorder:
         self._file = None
         self._writer = None
 
-    # 负责写入每行数据
-    def write_samples(self, data: np.ndarray, sampling_rate: float = 250.0, marker: int = 0) -> None:
-        if not self._is_recording or self._writer is None:
-            return
-        if data.size == 0:
+    def _write_batch(self, data: np.ndarray, sampling_rate: float, marker: int) -> None:
+        if self._writer is None:
             return
         t = time.time()
         num_samples = data.shape[1]
