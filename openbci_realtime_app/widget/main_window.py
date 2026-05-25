@@ -1,10 +1,13 @@
 import numpy as np
 from PySide6.QtCore import QTimer, QThread, Qt
 from PySide6.QtWidgets import (
+    QDockWidget,
     QHBoxLayout,
+    QLabel,
     QMainWindow,
     QSplitter,
     QTabWidget,
+    QVBoxLayout,
     QWidget,
 )
 
@@ -40,38 +43,84 @@ class MainWindow(QMainWindow):
         self._refresh_ms: int = 50
 
         self._init_ui()
-        self._init_timer()
-        self._init_processing_thread()
+        # self._init_timer()
+        # self._init_processing_thread()
 
-        self._connect_signals()
+        # self._connect_signals()
 
     def _init_ui(self) -> None:
-        central = QWidget()
-        self.setCentralWidget(central)
-        main_layout = QHBoxLayout(central)
-        main_layout.setContentsMargins(4, 4, 4, 4)
+        # 左下角区域归属给左侧 dock
+        # self.setCorner(Qt.BottomLeftCorner, Qt.LeftDockWidgetArea)
 
-        self._control_panel = ControlPanel()
-        main_layout.addWidget(self._control_panel)
+        self.left_dock = QDockWidget("控制面板")
+        self.left_dock.setObjectName("left_dock")
+        self.left_dock.setTitleBarWidget(QWidget())
+        self.left_dock.setMinimumWidth(220)
+        self.left_dock.setMaximumWidth(300)
+        left_widget = self._setup_left_panel()
+        self.left_dock.setWidget(left_widget)
+        self.addDockWidget(Qt.LeftDockWidgetArea, self.left_dock)
 
-        right_splitter = QSplitter(Qt.Orientation.Vertical)
+        center_widget = self._setup_center_panel()
+        self.setCentralWidget(center_widget)
 
-        self._eeg_plot = EegPlotWidget()
-        right_splitter.addWidget(self._eeg_plot)
+        self.right_dock = QDockWidget("右侧面板")
+        self.right_dock.setObjectName("right_dock")
+        self.right_dock.setTitleBarWidget(QWidget())
+        right_widget = self._setup_right_panel()
+        self.right_dock.setWidget(right_widget)
+        self.addDockWidget(Qt.RightDockWidgetArea, self.right_dock)
+        self.right_dock.hide()
 
-        analysis_tabs = QTabWidget()
-        self._spectrum_widget = SpectrumWidget()
-        self._band_power_widget = BandPowerWidget()
-        analysis_tabs.addTab(self._spectrum_widget, "PSD")
-        analysis_tabs.addTab(self._band_power_widget, "Band Power")
-        right_splitter.addWidget(analysis_tabs)
+        self.bottom_dock = QDockWidget("底部面板")
+        self.bottom_dock.setObjectName("bottom_dock")
+        self.bottom_dock.setTitleBarWidget(QWidget())
+        bottom_widget = self._setup_bottom_panel()
+        self.bottom_dock.setWidget(bottom_widget)
+        self.addDockWidget(Qt.BottomDockWidgetArea, self.bottom_dock)
+        self.bottom_dock.hide()
 
-        right_splitter.setStretchFactor(0, 3)
-        right_splitter.setStretchFactor(1, 1)
 
-        main_layout.addWidget(right_splitter, 1)
 
-        self._init_channels()
+    
+    def _setup_left_panel(self):
+        widget = ControlPanel()
+        return widget
+
+
+    def _setup_center_panel(self):
+        widget = QWidget()
+        layout = QVBoxLayout(widget)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(6)
+
+        self.tab_widget = QTabWidget()
+        self.eeg_widget = EegPlotWidget()
+        self.fft_widget = SpectrumWidget()
+        
+        self.tab_widget.addTab(self.eeg_widget, "EEG 时序图")
+        self.tab_widget.addTab(self.fft_widget, "FFT 频谱图")
+
+        layout.addWidget(self.tab_widget)
+        return widget
+
+    def _setup_right_panel(self):
+        widget = QWidget()
+        layout = QVBoxLayout(widget)
+        layout.setContentsMargins(4, 4, 4, 4)
+        label = QLabel("右侧面板 — 待设计")
+        label.setAlignment(Qt.AlignCenter)
+        layout.addWidget(label)
+        return widget
+
+    def _setup_bottom_panel(self):
+        widget = QWidget()
+        layout = QHBoxLayout(widget)
+        layout.setContentsMargins(4, 4, 4, 4)
+        label = QLabel("底部面板 — 待设计")
+        label.setAlignment(Qt.AlignCenter)
+        layout.addWidget(label)
+        return widget
 
     def _init_channels(self) -> None:
         num_channels = 8

@@ -8,13 +8,11 @@ from parameter import load_default_settings
 
 def main() -> None:
     settings = load_default_settings()
-
     app = QApplication(sys.argv)
+    app.setStyle("fusion")
     app.setApplicationName("OpenBCI EEG Monitor")
-
     window = MainWindow(settings)
     window.show()
-
     sys.exit(app.exec())
 
 
