@@ -183,24 +183,53 @@ class ControlPanel(QWidget):
         self._stop_stream_btn.clicked.connect(self.stop_requested)
         self._record_check.toggled.connect(self.record_toggled)
 
-        self._device_combo.currentTextChanged.connect(self._emit_config)
-        self._port_combo.currentTextChanged.connect(self._emit_config)
+        emit = self._emit_single
+        self._device_combo.currentTextChanged.connect(
+            lambda v: emit("device.name", v)
+        )
+        self._port_combo.currentTextChanged.connect(
+            lambda v: emit("device.serial_port", v)
+        )
 
-        self._detrend_check.toggled.connect(self._emit_config)
-        self._bp_low_spin.valueChanged.connect(self._emit_config)
-        self._bp_high_spin.valueChanged.connect(self._emit_config)
-        self._notch_combo.currentTextChanged.connect(self._emit_config)
+        self._detrend_check.toggled.connect(
+            lambda v: emit("process.detrend", v)
+        )
+        self._bp_low_spin.valueChanged.connect(
+            lambda v: emit("process.bp_low_hz", v)
+        )
+        self._bp_high_spin.valueChanged.connect(
+            lambda v: emit("process.bp_high_hz", v)
+        )
+        self._notch_combo.currentTextChanged.connect(
+            lambda v: emit("process.notch_hz", self._notch_text_to_hz(v))
+        )
 
-        self._window_type.currentTextChanged.connect(self._emit_config)
-        self._spectral_time.valueChanged.connect(self._emit_config)
-        self._overlap_ratio.valueChanged.connect(self._emit_config)
+        self._window_type.currentTextChanged.connect(
+            lambda v: emit("spectral.window_type", v)
+        )
+        self._spectral_time.valueChanged.connect(
+            lambda v: emit("spectral.spectral_time", v)
+        )
+        self._overlap_ratio.valueChanged.connect(
+            lambda v: emit("spectral.overlap_ratio", v)
+        )
 
-        self._window_time_spin.valueChanged.connect(self._emit_config)
-        self._refresh_spin.valueChanged.connect(self._emit_config)
-        self._amplitude_spin.valueChanged.connect(self._emit_config)
+        self._window_time_spin.valueChanged.connect(
+            lambda v: emit("display.window_seconds", v)
+        )
+        self._amplitude_spin.valueChanged.connect(
+            lambda v: emit("display.amplitude_range", v)
+        )
+        self._refresh_spin.valueChanged.connect(
+            lambda v: emit("display.refresh_ms", v)
+        )
 
-        self._record_original_signal.toggled.connect(self._emit_config)
-        self._record_processed_signal.toggled.connect(self._emit_config)
+        self._record_original_signal.toggled.connect(
+            lambda v: emit("recording.record_original", v)
+        )
+        self._record_processed_signal.toggled.connect(
+            lambda v: emit("recording.record_processed", v)
+        )
 
     def load_settings(self, settings) -> None:
         self._device_combo.setCurrentText(
@@ -268,34 +297,11 @@ class ControlPanel(QWidget):
         self._start_stream_btn.setEnabled(not streaming)
         self._stop_stream_btn.setEnabled(streaming)
 
-    def _emit_config(self) -> None:
-        notch_text = self._notch_combo.currentText()
-        if notch_text == "None":
-            notch_hz = 0.0
-        else:
-            notch_hz = float(notch_text.split()[0])
-        self.config_changed.emit({
-            # device
-            "device.name": self._device_combo.currentText(),
-            "device.serial_port": self._port_combo.currentText(),
+    @staticmethod
+    def _notch_text_to_hz(text: str) -> float:
+        if text == "None":
+            return 0.0
+        return float(text.split()[0])
 
-            # process
-            "process.detrend": self._detrend_check.isChecked(),
-            "process.bp_low_hz": self._bp_low_spin.value(),
-            "process.bp_high_hz": self._bp_high_spin.value(),
-            "process.notch_hz": notch_hz,
-
-            # spectral
-            "spectral.window_type": self._window_type.currentText(),
-            "spectral.spectral_time": self._spectral_time.value(),
-            "spectral.overlap_ratio": self._overlap_ratio.value(),
-            
-            # display
-            "display.window_seconds": self._window_time_spin.value(),
-            "display.amplitude_range": self._amplitude_spin.value(),
-            "display.refresh_ms": self._refresh_spin.value(),
-
-            # recorder
-            "recording.record_original": self._record_original_signal.isChecked(),
-            "recording.record_processed": self._record_processed_signal.isChecked(),
-        })
+    def _emit_single(self, key: str, value) -> None:
+        self.config_changed.emit({key: value})

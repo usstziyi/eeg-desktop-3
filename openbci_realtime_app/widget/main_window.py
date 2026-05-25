@@ -293,73 +293,7 @@ class MainWindow(QMainWindow):
         if self._session is None or not self._session.is_streaming:
             return
         try:
-            sampling_rate = self._session.sampling_rate
-            window_seconds = self._settings.get("display", "window_seconds", default=4.0)
-            max_points = int(sampling_rate * window_seconds)
-            refresh_points = int(sampling_rate * self._refresh_ms / 1000.0)
-            data = self._session.get_current_data(refresh_points * 2)
-            if data.size == 0:
-                return
-
-            eeg_channels = self._session.eeg_channels
-            timestamp_channel = self._session.timestamp_channel
-            eeg_data = data[eeg_channels, :]
-
-            if timestamp_channel < data.shape[0]:
-                board_times = data[timestamp_channel, :].astype(np.float64)
-                if board_times.size > 0 and board_times[-1] > self._prev_board_time:
-                    dt = (board_times[-1] - self._prev_board_time) / max(len(board_times), 1)
-                    self._prev_board_time = board_times[-1]
-                else:
-                    dt = 1.0 / sampling_rate
-            else:
-                dt = 1.0 / sampling_rate
-
-            new_samples = eeg_data.shape[1]
-            new_times = self._elapsed_time + np.arange(new_samples) * dt
-            self._elapsed_time = new_times[-1] + dt
-
-            if self._raw_buffer.size == 0:
-                self._raw_buffer = eeg_data
-                self._time_buffer = new_times
-            else:
-                self._raw_buffer = np.hstack([self._raw_buffer, eeg_data])
-                self._time_buffer = np.hstack([self._time_buffer, new_times])
-
-            if self._raw_buffer.shape[1] > max_points:
-                trim = self._raw_buffer.shape[1] - max_points
-                self._raw_buffer = self._raw_buffer[:, trim:]
-                self._time_buffer = self._time_buffer[trim:]
-
-            if self._time_buffer.size > 0:
-                t_offset = self._time_buffer[-1] - window_seconds
-            else:
-                t_offset = 0.0
-            display_times = self._time_buffer - t_offset
-
-            self.eeg_widget.update_data(self._raw_buffer)
-
-            self._psd_counter += 1
-            if self._psd_counter >= self._psd_interval:
-                self._psd_counter = 0
-                psd_window_s = self._settings.get("processing", "psd_window_seconds", default=4.0)
-                psd_samples = int(sampling_rate * psd_window_s)
-                analysis_data = (
-                    self._raw_buffer[:, -psd_samples:]
-                    if self._raw_buffer.shape[1] > psd_samples
-                    else self._raw_buffer
-                )
-                if analysis_data.shape[1] >= 64:
-                    processing_config = self._make_filter_config()
-                    self._processing_worker.update_config(
-                        processing_config,
-                        psd_window_s,
-                        self._settings.get("processing", "welch_overlap_ratio", default=0.5),
-                    )
-                    self._processing_worker.process(analysis_data.copy(), sampling_rate)
-
-            if self._recorder.is_recording:
-                self._recorder.write_samples(eeg_data, sampling_rate)
+            pass
 
         except Exception:
             pass
@@ -381,19 +315,19 @@ class MainWindow(QMainWindow):
         else:
             self._recorder.stop()
 
-    def _on_config_changed(self, updates: dict) -> None:      
+    def _on_config_changed(self, updates: dict) -> None:
         for key, value in updates.items():
             parts = key.split(".")
             self._settings.set(value, *parts)
 
+            if key == "display.window_seconds":
+                self.eeg_widget.set_x_range(value)
+            elif key == "display.amplitude_range":
+                self.eeg_widget.set_y_range(value)
+            elif key == "display.refresh_ms":
+                self._refresh_ms = value
+                self._timer.setInterval(value)
 
-        # self._refresh_ms = self._settings.get("display", "refresh_ms", default=50)
-        # self._timer.setInterval(self._refresh_ms)
-        # window_s = self._settings.get("display", "window_seconds", default=4.0)
-        # self.eeg_widget.set_window_time(window_s)
-        # y_scale = self._settings.get("display", "amplitude_range", default=100)
-        # self.eeg_widget.set_y_range(y_scale)
-        # self._psd_interval = max(4, int(200 / max(self._refresh_ms, 1)))
 
     def _make_filter_config(self) -> FilterConfig:
         return FilterConfig(
