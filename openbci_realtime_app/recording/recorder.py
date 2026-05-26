@@ -2,7 +2,6 @@ import csv
 import os
 import queue
 import threading
-import time
 from datetime import datetime
 
 import numpy as np
@@ -29,8 +28,9 @@ import numpy as np
 """
 
 class Recorder:
-    def __init__(self, directory: str = "recordings"):
+    def __init__(self, directory: str = "recordings", data_type: str = "raw"):
         self._directory = directory
+        self._data_type = data_type
         self._file = None
         self._writer = None
         self._is_recording = False
@@ -47,7 +47,7 @@ class Recorder:
             return ""
         os.makedirs(self._directory, exist_ok=True)
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        filename = os.path.join(self._directory, f"eeg_recording_{timestamp}.csv")
+        filename = os.path.join(self._directory, f"eeg_recording_{self._data_type}_{timestamp}.csv")
         self._file = open(filename, "w", newline="", encoding="utf-8")
         self._writer = csv.writer(self._file)
         header = ["timestamp"]
@@ -77,12 +77,12 @@ class Recorder:
             # 异常退出时系统直接回收，不拖泥带水
             self._thread.join(timeout=5.0)
 
-    def write_samples(self, data: np.ndarray, sampling_rate: float = 250.0, marker: int = 0) -> None:
+    def write_samples(self, data: np.ndarray, timestamps: np.ndarray, marker: int = 0) -> None:
         if not self._is_recording:
             return
         if data.size == 0:
             return
-        self._queue.put((data.copy(), sampling_rate, marker))
+        self._queue.put((data.copy(), timestamps.copy(), marker))
 
     def _writer_loop(self) -> None:
         # 阶段一：正常运行
@@ -116,14 +116,12 @@ class Recorder:
         self._file = None
         self._writer = None
 
-    def _write_batch(self, data: np.ndarray, sampling_rate: float, marker: int) -> None:
+    def _write_batch(self, data: np.ndarray, timestamps: np.ndarray, marker: int) -> None:
         if self._writer is None:
             return
-        t = time.time()
         num_samples = data.shape[1]
-        dt = 1.0 / sampling_rate if sampling_rate > 0 else 0.004
         for i in range(num_samples):
-            row = [f"{t + i * dt:.6f}"]
+            row = [f"{timestamps[i]:.6f}"]
             row.extend(f"{data[ch, i]:.6f}" for ch in range(data.shape[0]))
             row.append(str(marker))
             self._writer.writerow(row)

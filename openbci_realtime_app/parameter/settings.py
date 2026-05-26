@@ -6,28 +6,28 @@ from typing import Any
 _DEFAULT_CONFIG = {
     "device": {
         "name": "synthetic",
-        "serial_port": "",
+        "serial_port": ""
     },
     "display": {
         "refresh_ms": 50,
-        "window_seconds": 4.0,
-        "amplitude_range": 100
+        "window_seconds": 6.0,
+        "amplitude_range": 10
     },
     "process": {
         "detrend": True,
         "bp_low_hz": 0.1,
         "bp_high_hz": 45.0,
-        "notch_hz": 50.0,
+        "notch_hz": 50.0
     },
-    "spectral": {
+    "spectrum": {
         "window_type": "Hamming",
-        "spectral_time": 0.5,
-        "overlap_ratio": 10,
+        "spectrum_window": 4.0,
+        "overlap_ratio": 50
     },
     "recording": {
         "record_original": False,
-        "record_processed": False,
-    },
+        "record_processed": False
+    }
 }
 
 

@@ -18,7 +18,7 @@ from PySide6.QtWidgets import (
 
 from acquisition import BoardSession, create_board
 from parameter import Settings
-from processing import FilterConfig, ProcessingWorker
+from processing import ProcessingConfig, ProcessingWorker
 from recording import Recorder
 
 from .control_panel import ControlPanel
@@ -33,26 +33,31 @@ class MainWindow(QMainWindow):
         super().__init__()
         self.setWindowTitle("OpenBCI EEG - Real-time Monitor")
         self.resize(1400, 900)
+        
 
+        # MainWindow的属性
+        self._app_settings = QSettings()
         self._settings = settings
-        self._session: BoardSession | None = None
-        self._recorder = Recorder(
-            directory=settings.get("recording", "directory", default="recordings")
-        )
-
         self._sample_rate: int = 250
+        self._timestamp_channel: int = 0
         self._eeg_channel_num: int = 8
         self._eeg_names: list[str]=None
         self._eeg_channels: list[int]=None
-
         self._raw_data: np.ndarray = np.array([]) # 所有通道数据
         self._eeg_data: np.ndarray = np.array([]) # eeg通道数据
+        self._session: BoardSession | None = None
+        self._recorder_eeg_raw_thread = Recorder(os.path.dirname(__file__), "raw")
+        self._recorder_eeg_processed_thread = Recorder(os.path.dirname(__file__), "processed")
 
 
+
+        # 可以从settings中获取的属性
+        self._record_original = False
+        self._record_processed = False
         self._refresh_ms: int = 50
-        self._window_time: int=5
+        self._window_time: int = 5.0
 
-        self._app_settings = QSettings()
+        
 
         self._init_ui()
         self._setup_menubar()
@@ -170,6 +175,7 @@ class MainWindow(QMainWindow):
         self._timer.timeout.connect(self._on_timer_tick)
 
     def _init_processing_thread(self) -> None:
+        self._processing_config = None
         self._processing_worker = ProcessingWorker()
         self._processing_thread = QThread(self)
         self._processing_worker.moveToThread(self._processing_thread)
@@ -201,6 +207,7 @@ class MainWindow(QMainWindow):
             self._control_panel.set_connected(True)
 
             self._sample_rate = session.sampling_rate
+            self._timestamp_channel = session.timestamp_channel
             self._eeg_channel_num = session.eeg_channel_num
             self._eeg_names = session.eeg_names
             self._eeg_channels = session.eeg_channels
@@ -212,6 +219,24 @@ class MainWindow(QMainWindow):
 
             self._raw_data = np.array([])
             self._eeg_data = np.array([])
+
+            # 组装工作线程的配置
+            detrend  = self._settings.get("processing", "detrend", default=True)
+            bp_low_hz = self._settings.get("processing", "bp_low_hz", default=0.5)
+            bp_high_hz = self._settings.get("processing", "bp_high_hz", default=40.0)
+            notch_hz = self._settings.get("processing", "notch_hz", default=50.0)
+            window_type = self._settings.get("processing", "window_type", default="Hamming")
+            spectrum_window = self._settings.get("processing", "spectrum_window", default=4.0)
+            overlap_ratio = self._settings.get("processing", "overlap_ratio", default=50)
+            self._processing_config = ProcessingConfig(
+                detrend=detrend,
+                bp_low_hz=bp_low_hz,
+                bp_high_hz=bp_high_hz,
+                notch_hz=notch_hz,
+                window_type=window_type,
+                spectrum_window=spectrum_window,
+                overlap_ratio=overlap_ratio,
+            )
  
 
             self._show_board_info(session, name)
@@ -262,6 +287,8 @@ class MainWindow(QMainWindow):
             self._control_panel.set_streaming(True)
             self._raw_data = np.array([])
             self._eeg_data = np.array([])
+            # 更新一下工作线程的配置参数
+            self._processing_worker.update_config(self._processing_config)
             self._timer.start()
         except Exception:
             traceback.print_exc()
@@ -271,9 +298,11 @@ class MainWindow(QMainWindow):
         if self._session and self._session.is_streaming:
             self._session.stop()
         self._control_panel.set_streaming(False)
-        if self._recorder.is_recording:
-            self._recorder.stop()
-            self._control_panel._record_check.setChecked(False)
+        if self._recorder_eeg_raw_thread.is_recording:
+            self._recorder_eeg_raw_thread.stop()
+        if self._recorder_eeg_processed_thread.is_recording:
+            self._recorder_eeg_processed_thread.stop()
+        self._control_panel._record_check.setChecked(False)
 
     """
     耗时操作全部异步：
@@ -295,11 +324,19 @@ class MainWindow(QMainWindow):
             # 所有通道数据
             self._raw_data = self._session.get_current_data(window_sample_num)
             # eeg通道数据
-            self._eeg_data = self._raw_data[self._eeg_channels[:8], :]
-
+            self._eeg_data = self._raw_data[self._eeg_channels, :]
+            # 发送给工作线程
             if self._eeg_data.size > 0 and self._eeg_data.shape[1] > 0:
-                t = np.arange(-self._eeg_data.shape[1] + 1, 1) / self._sample_rate
-                self.eeg_widget.updata_data(t, self._eeg_data)
+                self._processing_worker.process(self._eeg_data)
+            # 发送给录制线程
+            if self._raw_data.size > 0:
+                timestamps = self._raw_data[self._timestamp_channel, :]
+                if self._recorder_eeg_raw_thread.is_recording and self._record_original:
+                    self._recorder_eeg_raw_thread.write_samples(self._raw_data, timestamps)
+                if self._recorder_eeg_processed_thread.is_recording and self._record_processed:
+                    self._recorder_eeg_processed_thread.write_samples(self._eeg_data, timestamps)
+
+
 
         except Exception:
             traceback.print_exc()
@@ -316,10 +353,19 @@ class MainWindow(QMainWindow):
     def _on_record_toggled(self, checked: bool) -> None:
         if checked:
             if self._session and self._session.is_streaming:
-                labels = self._session.eeg_names
-                self._recorder.start(labels)
+                original = self._settings.get("recording", "record_original", default=False)
+                processed = self._settings.get("recording", "record_processed", default=False)
+                if original:
+                    self._recorder_eeg_raw_thread.start()
+                if processed:
+                    self._recorder_eeg_processed_thread.start()
+                self._control_panel.set_record_checkboxes_enabled(False)
         else:
-            self._recorder.stop()
+            if self._recorder_eeg_raw_thread.is_recording:
+                self._recorder_eeg_raw_thread.stop()
+            if self._recorder_eeg_processed_thread.is_recording:
+                self._recorder_eeg_processed_thread.stop()
+            self._control_panel.set_record_checkboxes_enabled(True)
 
     def _on_config_changed(self, updates: dict) -> None:
         for key, value in updates.items():
@@ -333,15 +379,13 @@ class MainWindow(QMainWindow):
             elif key == "display.refresh_ms":
                 self._refresh_ms = value
                 self._timer.setInterval(value)
+            elif key == "recording.record_original":
+                self._record_original = value
+            elif key == "recording.record_processed":
+                self._record_processed = value
 
 
-    def _make_filter_config(self) -> FilterConfig:
-        return FilterConfig(
-            bandpass_low=self._settings.get("process", "bp_low_hz", default=0.1),
-            bandpass_high=self._settings.get("process", "bp_high_hz", default=45.0),
-            notch=self._settings.get("process", "notch_hz", default=50.0),
-            sampling_rate=self._session.sampling_rate if self._session else 250.0,
-        )
+
 
     def closeEvent(self, event) -> None:
         self._app_settings.setValue("window/geometry", self.saveGeometry())
@@ -349,8 +393,10 @@ class MainWindow(QMainWindow):
 
         self._timer.stop()
 
-        if self._recorder.is_recording:
-            self._recorder.stop()
+        if self._recorder_eeg_raw_thread.is_recording:
+            self._recorder_eeg_raw_thread.stop()
+        if self._recorder_eeg_processed_thread.is_recording:
+            self._recorder_eeg_processed_thread.stop()
 
         if self._session:
             self._session.release()

@@ -1,50 +1,76 @@
+from dataclasses import dataclass
+
 import numpy as np
 from PySide6.QtCore import QObject, Signal, Slot
 
-from .types import FilterConfig, ProcessedData
-from .filters import apply_filter_chain
-from .spectrum import compute_psd_welch
-from .band_power import compute_band_powers
+# from .filters import apply_filter_chain
+# from .spectrum import compute_psd_welch
+# from .band_power import compute_band_powers
+
+
+
+BAND_DEFS = {
+    "delta": (0.5, 4.0),
+    "theta": (4.0, 8.0),
+    "alpha": (8.0, 13.0),
+    "beta": (13.0, 30.0),
+    "gamma": (30.0, 45.0),
+}
+
+
+@dataclass(frozen=True)
+class ProcessingConfig:
+    # 去趋势
+    detrend: bool = True
+    # 滤波
+    bp_low_hz: float = 0.1
+    bp_high_hz: float = 45.0
+    notch_hz: float = 50.0
+    # psd
+    window_type: str = "Hamming"
+    spectrum_window: float = 4.0
+    overlap_ratio: float = 50
+
 
 
 class ProcessingWorker(QObject):
     processed_ready = Signal(object)
-    _trigger = Signal(object, float)
+    _trigger = Signal(object)
 
     def __init__(self, parent: QObject | None = None):
         super().__init__(parent)
-        self._filter_config = FilterConfig()
-        self._psd_window_seconds = 4.0
-        self._welch_overlap = 0.5
+        self._config = ProcessingConfig()
         self._trigger.connect(self._do_process)
 
-    def update_config(
-        self,
-        filter_config: FilterConfig,
-        psd_window_seconds: float,
-        welch_overlap: float,
-    ) -> None:
-        self._filter_config = filter_config
-        self._psd_window_seconds = psd_window_seconds
-        self._welch_overlap = welch_overlap
+    def update_config(self, config: ProcessingConfig) -> None:
+        self._config = config
 
-    def process(self, raw_eeg: np.ndarray, sampling_rate: float) -> None:
-        # 主线程发射信号，自动选择 QueuedConnection，发给子线程
-        self._trigger.emit(raw_eeg, sampling_rate)
+# """
+#     主线程 (_on_timer_tick)              工作线程 (QThread 事件循环)
+#     ──────────────────────               ──────────────────────────
+#     process(data)                      
+#         │                                
+#         _trigger.emit(data)  ──── QueuedConnection ────→ _do_process(data)
+#         │                                                    │
+#     立即返回 ❌不阻塞                                    真正干活
+# """
+    def process(self, eeg_data: np.ndarray) -> None:
+        self._trigger.emit(eeg_data.copy())
 
-    @Slot(object, float)
-    def _do_process(self, raw_eeg: np.ndarray, sampling_rate: float) -> None:
-        if raw_eeg.size == 0:
-            return
-        filtered = apply_filter_chain(raw_eeg.copy(), sampling_rate, self._filter_config)
-        freqs, psd_vals = compute_psd_welch(
-            filtered, sampling_rate, self._psd_window_seconds, self._welch_overlap
-        )
-        band_powers = compute_band_powers(filtered, sampling_rate)
-        result = ProcessedData(
-            filtered_eeg=filtered,
-            psd_freqs=freqs,
-            psd_values=psd_vals,
-            band_powers=band_powers,
-        )
-        self.processed_ready.emit(result)
+
+
+    """
+    耗时操作都在这里
+    1.去趋势
+    2.滤波
+    3.计算psd
+    4.计算band_power
+    """
+    @Slot(object)
+    def _do_process(self, eeg_data: np.ndarray) -> None:
+        config = self._config   # 一次原子读取，锁定快照
+        # TODO
+        print(eeg_data.shape)
+
+
+        # self.processed_ready.emit(result)

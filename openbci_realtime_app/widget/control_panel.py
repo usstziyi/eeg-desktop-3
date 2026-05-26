@@ -40,13 +40,13 @@ class ControlPanel(QWidget):
         device_group = self._build_device_group()
         stream_group = self._build_stream_group()
         process_group = self._build_process_group()
-        spectral_group = self._build_spectral_group()
+        spectrum_group = self._build_spectrum_group()
         display_group = self._build_display_group()
         recorder_group = self._build_recorder_group()
         main_layout.addWidget(device_group)
         main_layout.addWidget(stream_group)
         main_layout.addWidget(process_group)
-        main_layout.addWidget(spectral_group)
+        main_layout.addWidget(spectrum_group)
         main_layout.addWidget(display_group)
         main_layout.addStretch(1)
         main_layout.addWidget(recorder_group)
@@ -116,24 +116,24 @@ class ControlPanel(QWidget):
 
         return process_group
 
-    def _build_spectral_group(self):
-        spectral_group = QGroupBox("频域分析")
-        spectral_layout = QFormLayout(spectral_group)
+    def _build_spectrum_group(self):
+        spectrum_group = QGroupBox("频域分析")
+        spectrum_layout = QFormLayout(spectrum_group)
         self._window_type = QComboBox()
         self._window_type.addItems(["Hann", "Hamming", "Blackman", "Bartlett", "Rectangular"])
         self._window_type.setCurrentText("Hamming")
-        spectral_layout.addRow("窗口类型:",self._window_type)
-        self._spectral_time = QDoubleSpinBox()
-        self._spectral_time.setSuffix(" s")
-        self._spectral_time.setRange(0.5, 5.0)
-        self._spectral_time.setSingleStep(0.5)
-        spectral_layout.addRow("频谱窗长:",self._spectral_time)
+        spectrum_layout.addRow("窗口类型:",self._window_type)
+        self._spectrum_window = QDoubleSpinBox()
+        self._spectrum_window.setSuffix(" s")
+        self._spectrum_window.setRange(0.5, 5.0)
+        self._spectrum_window.setSingleStep(0.5)
+        spectrum_layout.addRow("频谱窗长:",self._spectrum_window)
         self._overlap_ratio = QSpinBox()
         self._overlap_ratio.setSuffix(" %")
         self._overlap_ratio.setRange(10,50)
         self._overlap_ratio.setSingleStep(5)
-        spectral_layout.addRow("重叠比例:",self._overlap_ratio)
-        return spectral_group
+        spectrum_layout.addRow("重叠比例:",self._overlap_ratio)
+        return spectrum_group
 
 
 
@@ -167,7 +167,7 @@ class ControlPanel(QWidget):
         self._record_check = QCheckBox("Record")
         self._record_original_signal = QCheckBox("原始信号")
         self._record_processed_signal = QCheckBox("实时信号")
-        self._recorder_button = QPushButton("录制")
+        self._recorder_button = QPushButton("开始录制")
         recorder_layout.addRow(self._record_original_signal)
         recorder_layout.addRow(self._record_processed_signal)
         recorder_layout.addRow(self._recorder_button)
@@ -182,6 +182,8 @@ class ControlPanel(QWidget):
         self._start_stream_btn.clicked.connect(self.start_requested)
         self._stop_stream_btn.clicked.connect(self.stop_requested)
         self._record_check.toggled.connect(self.record_toggled)
+        self._record_check.toggled.connect(self._on_record_check_toggled)
+        self._recorder_button.clicked.connect(self._record_check.toggle)
 
         emit = self._emit_single
         self._device_combo.currentTextChanged.connect(
@@ -205,13 +207,13 @@ class ControlPanel(QWidget):
         )
 
         self._window_type.currentTextChanged.connect(
-            lambda v: emit("spectral.window_type", v)
+            lambda v: emit("spectrum.window_type", v)
         )
-        self._spectral_time.valueChanged.connect(
-            lambda v: emit("spectral.spectral_time", v)
+        self._spectrum_window.valueChanged.connect(
+            lambda v: emit("spectrum.spectrum_window", v)
         )
         self._overlap_ratio.valueChanged.connect(
-            lambda v: emit("spectral.overlap_ratio", v)
+            lambda v: emit("spectrum.overlap_ratio", v)
         )
 
         self._window_time_spin.valueChanged.connect(
@@ -258,13 +260,13 @@ class ControlPanel(QWidget):
             self._notch_combo.setCurrentText("50 Hz")
 
         self._window_type.setCurrentText(
-            settings.get("spectral", "window_type", default="Hamming")
+            settings.get("spectrum", "window_type", default="Hamming")
         )
-        self._spectral_time.setValue(
-            settings.get("spectral", "spectral_time", default=0.5)
+        self._spectrum_window.setValue(
+            settings.get("spectrum", "spectrum_window", default=0.5)
         )
         self._overlap_ratio.setValue(
-            settings.get("spectral", "overlap_ratio", default=10)
+            settings.get("spectrum", "overlap_ratio", default=10)
         )
 
         self._window_time_spin.setValue(
@@ -296,6 +298,15 @@ class ControlPanel(QWidget):
     def set_streaming(self, streaming: bool) -> None:
         self._start_stream_btn.setEnabled(not streaming)
         self._stop_stream_btn.setEnabled(streaming)
+
+    @Slot(bool)
+    def set_record_checkboxes_enabled(self, enabled: bool) -> None:
+        self._record_original_signal.setEnabled(enabled)
+        self._record_processed_signal.setEnabled(enabled)
+
+    @Slot(bool)
+    def _on_record_check_toggled(self, checked: bool) -> None:
+        self._recorder_button.setText("停止录制" if checked else "开始录制")
 
     @staticmethod
     def _notch_text_to_hz(text: str) -> float:
