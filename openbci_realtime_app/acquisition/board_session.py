@@ -1,7 +1,7 @@
 import numpy as np
 from brainflow.board_shim import BoardShim
 
-BUFFER_SIZE = 45000  # 180s数据
+BUFFER_SIZE = 15000  # 60s数据
 
 
 class BoardSession:

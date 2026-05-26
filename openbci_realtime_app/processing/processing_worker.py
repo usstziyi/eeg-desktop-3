@@ -3,7 +3,7 @@ from dataclasses import dataclass, field
 import numpy as np
 from PySide6.QtCore import QObject, Signal, Slot
 
-from .filters import apply_filter_chain
+from .realtime_filters import RealtimeFilter
 from .spectrum import compute_psd_welch
 from .band_power import compute_band_powers
 
@@ -44,13 +44,33 @@ class ProcessingWorker(QObject):
     processed_ready = Signal(object)
     _trigger = Signal(object)
 
-    def __init__(self, parent: QObject | None = None):
+    def __init__(self, parent: QObject | None = None, n_channels: int = 8):
         super().__init__(parent)
         self._config = ProcessingConfig()
+        self._n_channels = n_channels
+        self._filter = RealtimeFilter(
+            fs=self._config.sampling_rate,
+            bp_low_hz=self._config.bp_low_hz,
+            bp_high_hz=self._config.bp_high_hz,
+            notch_hz=self._config.notch_hz,
+            n_channels=n_channels,
+        )
         self._trigger.connect(self._do_process)
 
     def update_config(self, config: ProcessingConfig) -> None:
+        old = self._config
         self._config = config
+        if (old.bp_low_hz != config.bp_low_hz
+            or old.bp_high_hz != config.bp_high_hz
+            or old.notch_hz != config.notch_hz
+            or old.sampling_rate != config.sampling_rate):
+            self._filter = RealtimeFilter(
+                fs=config.sampling_rate,
+                bp_low_hz=config.bp_low_hz,
+                bp_high_hz=config.bp_high_hz,
+                notch_hz=config.notch_hz,
+                n_channels=self._n_channels,
+            )
 
 # """
 #     主线程 (_on_timer_tick)              工作线程 (QThread 事件循环)
@@ -73,25 +93,14 @@ class ProcessingWorker(QObject):
     3.计算psd
     4.计算band_power
     """
-    _MIN_SAMPLES_FOR_FILTER = 28  # 4 阶 SOS 带通 filtfilt 要求 ≥28 点
-
     @Slot(object)
     def _do_process(self, eeg_data: np.ndarray) -> None:
-        if eeg_data.shape[1] < self._MIN_SAMPLES_FOR_FILTER:
-            return
-
         config = self._config
 
         if config.detrend:
             eeg_data = eeg_data - np.mean(eeg_data, axis=1, keepdims=True)
 
-        filtered = apply_filter_chain(
-            eeg_data,
-            fs=config.sampling_rate,
-            bp_low_hz=config.bp_low_hz,
-            bp_high_hz=config.bp_high_hz,
-            notch_hz=config.notch_hz,
-        )
+        filtered = self._filter.apply(eeg_data)
 
         # freqs, psd = compute_psd_welch(
         #     filtered,
