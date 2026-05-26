@@ -4,14 +4,14 @@
     "serial_port": "/dev/cu.usbmodem112101"
   },
   "display": {
-    "refresh_ms": 77,
+    "refresh_ms": 50,
     "window_seconds": 10.0,
     "amplitude_range": 2000
   },
   "process": {
     "detrend": true,
-    "bp_low_hz": 0.5,
-    "bp_high_hz": 45.8,
+    "bp_low_hz": 1.0,
+    "bp_high_hz": 40.0,
     "notch_hz": 50.0
   },
   "spectrum": {

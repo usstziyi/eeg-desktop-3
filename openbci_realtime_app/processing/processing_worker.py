@@ -54,7 +54,7 @@ class ProcessingWorker(QObject):
         self._config = ProcessingConfig()
         self._n_channels = n_channels
         
-        self._filter = CausalSOSFilter(
+        self._filter = ZeroPhaseSOSFilter(
             fs=self._config.sampling_rate,
             bp_low_hz=self._config.bp_low_hz,
             bp_high_hz=self._config.bp_high_hz,

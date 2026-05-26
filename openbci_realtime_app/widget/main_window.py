@@ -355,11 +355,14 @@ class MainWindow(QMainWindow):
             
             # eeg通道数据
             new_eeg_data = new_raw_data[self._eeg_channels, :]
-            # self._eeg_data[:, :-new_len] = self._eeg_data[:, new_len:]
-            # self._eeg_data[:, -new_len:] = new_eeg_data[:, -new_len:]
+            self._eeg_data[:, :-new_len] = self._eeg_data[:, new_len:]
+            self._eeg_data[:, -new_len:] = new_eeg_data[:, -new_len:]
 
             # 发送给工作线程
-            self._processing_worker.process(new_eeg_data)
+            # self._processing_worker.process(new_eeg_data)
+            window_sample_num = int(self._sample_rate * self._window_seconds)
+            self._processing_worker.process(self._eeg_data[:, -window_sample_num:])
+            
             # 发送给录制线程
             timestamps = new_raw_data[self._timestamp_channel, :]
             if self._recorder_eeg_raw_thread.is_recording and self._record_original:

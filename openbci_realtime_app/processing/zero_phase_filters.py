@@ -60,11 +60,11 @@ class ZeroPhaseSOSFilter:
         self._sos_bp = _design_bandpass(
             self._bp_low_hz, self._bp_high_hz, self._fs, self._bp_order
         )
-        self._min_len_bp = 3 * (2 * self._sos_bp.shape[0] + 1) + 1
+        self._min_len_bp = 3 * (2 * self._sos_bp.shape[0] + 1) + 1 # 28
 
         if self._notch_hz > 0:
             self._sos_notch = _design_notch(self._notch_hz, self._fs, self._notch_q)
-            self._min_len_notch = 3 * (2 * self._sos_notch.shape[0] + 1) + 1
+            self._min_len_notch = 3 * (2 * self._sos_notch.shape[0] + 1) + 1 # 10
         else:
             self._sos_notch = None
             self._min_len_notch = 0
