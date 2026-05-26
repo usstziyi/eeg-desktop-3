@@ -20,7 +20,7 @@ _DEFAULT_CONFIG = {
         "notch_hz": 50.0
     },
     "spectrum": {
-        "window_type": "Hamming",
+        "window_type": "Hann",
         "spectrum_window": 4.0,
         "overlap_ratio": 50
     },

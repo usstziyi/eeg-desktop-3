@@ -231,7 +231,8 @@ class MainWindow(QMainWindow):
             bp_low_hz = self._settings.get("processing", "bp_low_hz", default=0.5)
             bp_high_hz = self._settings.get("processing", "bp_high_hz", default=40.0)
             notch_hz = self._settings.get("processing", "notch_hz", default=50.0)
-            window_type = self._settings.get("processing", "window_type", default="Hamming")
+            sampling_rate = self._sample_rate
+            window_type = self._settings.get("processing", "window_type", default="Hann")
             spectrum_window = self._settings.get("processing", "spectrum_window", default=4.0)
             overlap_ratio = self._settings.get("processing", "overlap_ratio", default=50)
             self._processing_config = ProcessingConfig(
@@ -239,6 +240,7 @@ class MainWindow(QMainWindow):
                 bp_low_hz=bp_low_hz,
                 bp_high_hz=bp_high_hz,
                 notch_hz=notch_hz,
+                sampling_rate=sampling_rate,
                 window_type=window_type,
                 spectrum_window=spectrum_window,
                 overlap_ratio=overlap_ratio,

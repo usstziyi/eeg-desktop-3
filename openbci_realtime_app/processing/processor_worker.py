@@ -26,8 +26,9 @@ class ProcessingConfig:
     bp_low_hz: float = 0.1
     bp_high_hz: float = 45.0
     notch_hz: float = 50.0
+    sampling_rate: float = 250.0
     # psd
-    window_type: str = "Hamming"
+    window_type: str = "Hann"
     spectrum_window: float = 4.0
     overlap_ratio: float = 50
 
@@ -82,7 +83,6 @@ class ProcessingWorker(QObject):
             eeg_data -= np.mean(eeg_data, axis=1, keepdims=True)
 
         # 2.滤波
-        
         # 3.计算psd
         # 4.计算band_power
 

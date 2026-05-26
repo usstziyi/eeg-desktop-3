@@ -121,8 +121,8 @@ class ControlPanel(QWidget):
         spectrum_group = QGroupBox("频域分析")
         spectrum_layout = QFormLayout(spectrum_group)
         self._window_type = QComboBox()
-        self._window_type.addItems(["Hann", "Hamming", "Blackman", "Bartlett", "Rectangular"])
-        self._window_type.setCurrentText("Hamming")
+        self._window_type.addItems(["Hann", "Hann", "Blackman", "Bartlett", "Rectangular"])
+        self._window_type.setCurrentText("Hann")
         spectrum_layout.addRow("窗口类型:",self._window_type)
         self._spectrum_window = QDoubleSpinBox()
         self._spectrum_window.setSuffix(" s")
@@ -263,7 +263,7 @@ class ControlPanel(QWidget):
             self._notch_combo.setCurrentText("50 Hz")
 
         self._window_type.setCurrentText(
-            settings.get("spectrum", "window_type", default="Hamming")
+            settings.get("spectrum", "window_type", default="Hann")
         )
         self._spectrum_window.setValue(
             settings.get("spectrum", "spectrum_window", default=0.5)
