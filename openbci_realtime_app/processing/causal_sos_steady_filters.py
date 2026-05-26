@@ -98,5 +98,5 @@ class CausalSOSSteadyFilter:
 def _make_zi_for_first_sample(sos: np.ndarray, x0: np.ndarray) -> np.ndarray:
     zi = signal.sosfilt_zi(sos)
     zi = zi[:, np.newaxis, :]
-    zi = zi * x0[np.newaxis, :, np.newaxis]
+    zi = np.tile(zi, (1, len(x0), 1))
     return zi
