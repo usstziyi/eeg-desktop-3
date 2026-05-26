@@ -18,7 +18,7 @@ from PySide6.QtWidgets import (
 
 from acquisition import BoardSession, create_board
 from parameter import Settings
-from processing import ProcessingConfig, ProcessingWorker
+from processing import ProcessingConfig, ProcessingWorker, ProcessingResult
 from recording import Recorder
 
 from .control_panel import ControlPanel
@@ -46,9 +46,6 @@ class MainWindow(QMainWindow):
         self._raw_data: np.ndarray = np.array([]) # 所有通道数据
         self._eeg_data: np.ndarray = np.array([]) # eeg通道数据
         self._session: BoardSession | None = None
-        self._recorder_eeg_raw_thread = Recorder(os.path.dirname(__file__), "raw")
-        self._recorder_eeg_processed_thread = Recorder(os.path.dirname(__file__), "processed")
-
 
 
         # 可以从settings中获取的属性
@@ -57,14 +54,13 @@ class MainWindow(QMainWindow):
         self._refresh_ms: int = 50
         self._window_time: int = 5.0
 
-        
 
         self._init_ui()
         self._setup_menubar()
         self._restore_window_state()
         self._init_timer()
         self._init_processing_thread()
-
+        self._init_recording_thread()
         self._connect_signals()
 
     def _init_ui(self) -> None:
@@ -183,6 +179,10 @@ class MainWindow(QMainWindow):
         self._processing_worker.processed_ready.connect(
             self._on_processed_data, Qt.ConnectionType.QueuedConnection
         )
+
+    def _init_recording_thread(self):
+        self._recorder_eeg_raw_thread = Recorder(os.path.dirname(__file__), "raw")
+        self._recorder_eeg_processed_thread = Recorder(os.path.dirname(__file__), "processed")
 
     def _connect_signals(self) -> None:
         panel = self._control_panel
@@ -341,12 +341,15 @@ class MainWindow(QMainWindow):
         except Exception:
             traceback.print_exc()
 
-    def _on_processed_data(self, result) -> None:
+    def _on_processed_data(self, result: ProcessingResult) -> None:
         try:
-            if result.psd_freqs.size > 0 and result.psd_values.size > 0:
-                self._spectrum_widget.update_spectrum(result.psd_freqs, result.psd_values)
-            if result.band_powers:
-                self._band_power_widget.update_band_powers(result.band_powers)
+            if result.eeg_processed.shape[1] > 0:
+                times = np.arange(-result.eeg_processed.shape[1] + 1, 1) / self._sample_rate
+                self.eeg_widget.updata_data(times, result.eeg_processed)
+            # if result.psd_freqs.size > 0 and result.psd_values.size > 0:
+            #     self._spectrum_widget.update_spectrum(result.psd_freqs, result.psd_values)
+            # if result.band_powers:
+            #     self._band_power_widget.update_band_powers(result.band_powers)
         except Exception:
             pass
 

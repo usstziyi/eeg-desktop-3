@@ -32,6 +32,13 @@ class ProcessingConfig:
     overlap_ratio: float = 50
 
 
+@dataclass(frozen=True)
+class ProcessingResult:
+    eeg_processed: np.ndarray
+    psd_freqs: np.ndarray
+    psd_values: np.ndarray
+    band_powers: np.ndarray
+
 
 class ProcessingWorker(QObject):
     processed_ready = Signal(object)
@@ -70,7 +77,17 @@ class ProcessingWorker(QObject):
     def _do_process(self, eeg_data: np.ndarray) -> None:
         config = self._config   # 一次原子读取，锁定快照
         # TODO
-        print(eeg_data.shape)
 
 
-        # self.processed_ready.emit(result)
+
+
+
+
+
+        result = ProcessingResult(
+            eeg_processed=eeg_data,
+            psd_freqs=[],
+            psd_values=[],
+            band_powers=[],
+        )
+        self.processed_ready.emit(result)
