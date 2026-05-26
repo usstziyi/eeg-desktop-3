@@ -324,17 +324,18 @@ class MainWindow(QMainWindow):
             # 所有通道数据
             self._raw_data = self._session.get_current_data(window_sample_num)
             # eeg通道数据
-            self._eeg_data = self._raw_data[self._eeg_channels, :]
+            self._eeg_raw = self._raw_data[self._eeg_channels, :]
             # 发送给工作线程
-            if self._eeg_data.size > 0 and self._eeg_data.shape[1] > 0:
-                self._processing_worker.process(self._eeg_data)
+            if self._eeg_raw.size > 0 and self._eeg_raw.shape[1] > 0:
+                self._processing_worker.process(self._eeg_raw)
             # 发送给录制线程
             if self._raw_data.size > 0:
                 timestamps = self._raw_data[self._timestamp_channel, :]
+                print(self._record_original)
                 if self._recorder_eeg_raw_thread.is_recording and self._record_original:
-                    self._recorder_eeg_raw_thread.write_samples(self._raw_data, timestamps)
-                if self._recorder_eeg_processed_thread.is_recording and self._record_processed:
-                    self._recorder_eeg_processed_thread.write_samples(self._eeg_data, timestamps)
+                    self._recorder_eeg_raw_thread.write_samples(self._eeg_raw, timestamps)
+                # if self._recorder_eeg_processed_thread.is_recording and self._record_processed:
+                #     self._recorder_eeg_processed_thread.write_samples(self._eeg_data, timestamps)
 
 
 
@@ -356,12 +357,12 @@ class MainWindow(QMainWindow):
     def _on_record_toggled(self, checked: bool) -> None:
         if checked:
             if self._session and self._session.is_streaming:
-                original = self._settings.get("recording", "record_original", default=False)
-                processed = self._settings.get("recording", "record_processed", default=False)
-                if original:
-                    self._recorder_eeg_raw_thread.start()
-                if processed:
-                    self._recorder_eeg_processed_thread.start()
+                self._record_original = self._settings.get("recording", "record_original", default=False)
+                self._record_processed = self._settings.get("recording", "record_processed", default=False)
+                if self._record_original:
+                    self._recorder_eeg_raw_thread.start(self._eeg_names)
+                if self._record_processed:
+                    self._recorder_eeg_processed_thread.start(self._eeg_names)
                 self._control_panel.set_record_checkboxes_enabled(False)
         else:
             if self._recorder_eeg_raw_thread.is_recording:
