@@ -5,7 +5,7 @@
   },
   "display": {
     "refresh_ms": 50,
-    "window_seconds": 10.0,
+    "window_seconds": 15.0,
     "amplitude_range": 2000
   },
   "process": {

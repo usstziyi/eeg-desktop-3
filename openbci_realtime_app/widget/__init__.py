@@ -2,7 +2,7 @@ __all__ = [
     "BandPowerWidget",
     "ControlPanel",
     "EEGWidget",
-    "FFTWidget",
+    "PSDWidget",
     "MainWindow",
     "SpectrumWidget",
 ]
@@ -10,6 +10,6 @@ __all__ = [
 from widget.main_window import MainWindow
 from widget.control_panel import ControlPanel
 from widget.eeg_widget import EEGWidget
-from widget.fft_widget import FFTWidget
+from widget.psd_widget import PSDWidget
 from widget.spectrum_widget import SpectrumWidget
 from widget.band_power_widget import BandPowerWidget

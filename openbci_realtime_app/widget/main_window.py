@@ -24,7 +24,7 @@ from recording import Recorder
 
 from .control_panel import ControlPanel
 from .eeg_widget import EEGWidget
-from .fft_widget import FFTWidget
+from .psd_widget import PSDWidget
 from .spectrum_widget import SpectrumWidget
 from .band_power_widget import BandPowerWidget
 
@@ -113,10 +113,10 @@ class MainWindow(QMainWindow):
         self.tab_widget = QTabWidget()
         self._eeg_names=['Fp1', 'Fp2', 'C3', 'C4', 'P7', 'P8', 'O1', 'O2']
         self.eeg_widget = EEGWidget(self._eeg_names)
-        self.fft_widget = FFTWidget()
+        self.psd_widget = PSDWidget()
         
         self.tab_widget.addTab(self.eeg_widget, "EEG 时序图")
-        self.tab_widget.addTab(self.fft_widget, "FFT 频谱图")
+        self.tab_widget.addTab(self.psd_widget, "PSD 频谱图")
 
         layout.addWidget(self.tab_widget)
         return widget
@@ -137,8 +137,10 @@ class MainWindow(QMainWindow):
         layout.setSpacing(6)
         
         bottom_tab_widget = QTabWidget()
+        self.psd_widget = PSDWidget()
         self.spectrogram_widget = QWidget()
         self.band_power_widget = QWidget()
+        bottom_tab_widget.addTab(self.psd_widget, "PSD 频谱图")
         bottom_tab_widget.addTab(self.spectrogram_widget, "时频图")
         bottom_tab_widget.addTab(self.band_power_widget, "频带能量图")
 
