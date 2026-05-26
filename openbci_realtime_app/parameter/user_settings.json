@@ -5,8 +5,8 @@
   },
   "display": {
     "refresh_ms": 50,
-    "window_seconds": 6.0,
-    "amplitude_range": 10
+    "window_seconds": 2.0,
+    "amplitude_range": 400
   },
   "process": {
     "detrend": true,
