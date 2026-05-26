@@ -3,7 +3,11 @@ from dataclasses import dataclass, field
 import numpy as np
 from PySide6.QtCore import QObject, Signal, Slot
 
-from .realtime_filters import RealtimeFilter
+from .zero_phase_filters import ZeroPhaseSOSFilter
+from .causal_sos_filters import CausalSOSFilter
+from .causal_sos_steady_filters import CausalSOSSteadyFilter
+
+
 from .spectrum import compute_psd_welch
 from .band_power import compute_band_powers
 
@@ -43,12 +47,14 @@ class ProcessingResult:
 class ProcessingWorker(QObject):
     processed_ready = Signal(object)
     _trigger = Signal(object)
+    _config_changed = Signal()
 
     def __init__(self, parent: QObject | None = None, n_channels: int = 8):
         super().__init__(parent)
         self._config = ProcessingConfig()
         self._n_channels = n_channels
-        self._filter = RealtimeFilter(
+        
+        self._filter = CausalSOSFilter(
             fs=self._config.sampling_rate,
             bp_low_hz=self._config.bp_low_hz,
             bp_high_hz=self._config.bp_high_hz,
@@ -56,21 +62,22 @@ class ProcessingWorker(QObject):
             n_channels=n_channels,
         )
         self._trigger.connect(self._do_process)
+        self._config_changed.connect(self._do_update_config)
 
     def update_config(self, config: ProcessingConfig) -> None:
-        old = self._config
         self._config = config
-        if (old.bp_low_hz != config.bp_low_hz
-            or old.bp_high_hz != config.bp_high_hz
-            or old.notch_hz != config.notch_hz
-            or old.sampling_rate != config.sampling_rate):
-            self._filter = RealtimeFilter(
-                fs=config.sampling_rate,
-                bp_low_hz=config.bp_low_hz,
-                bp_high_hz=config.bp_high_hz,
-                notch_hz=config.notch_hz,
-                n_channels=self._n_channels,
-            )
+        self._config_changed.emit()
+
+    @Slot()
+    def _do_update_config(self) -> None:
+        config = self._config
+        self._filter.update_config(
+            fs=config.sampling_rate,
+            bp_low_hz=config.bp_low_hz,
+            bp_high_hz=config.bp_high_hz,
+            notch_hz=config.notch_hz,
+        )
+        
 
 # """
 #     主线程 (_on_timer_tick)              工作线程 (QThread 事件循环)
@@ -82,6 +89,8 @@ class ProcessingWorker(QObject):
 #     立即返回 ❌不阻塞                                    真正干活
 # """
     def process(self, eeg_data: np.ndarray) -> None:
+        if eeg_data.size == 0 or eeg_data.ndim < 2:
+            return
         self._trigger.emit(eeg_data.copy())
 
 

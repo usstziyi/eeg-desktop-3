@@ -10,6 +10,7 @@ class BoardSession:
         self._board_id = board.get_board_id()
         self._sampling_rate = BoardShim.get_sampling_rate(self._board_id)
         self._eeg_channels = BoardShim.get_eeg_channels(self._board_id)
+        self._total_channel_num = BoardShim.get_num_rows(self._board_id)
         self._is_streaming = False
         self._is_prepared = False
 
@@ -24,6 +25,10 @@ class BoardSession:
     @property
     def sampling_rate(self) -> float:
         return self._sampling_rate
+    
+    @property
+    def total_channel_num(self) -> int:
+        return self._total_channel_num
 
     @property
     def eeg_channels(self) -> list[int]:

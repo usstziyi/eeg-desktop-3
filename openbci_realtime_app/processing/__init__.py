@@ -3,15 +3,18 @@ __all__ = [
     "ProcessingConfig",
     "ProcessingResult",
     "BAND_DEFS",
-    "apply_filter_chain",
-    "RealtimeFilter",
+    "ZeroPhaseSOSFilter",
+    "CausalSOSFilter",
+    "CausalSOSSteadyFilter",
     "compute_psd_welch",
     "compute_band_powers",
 ]
 
 
 from .processing_worker import ProcessingWorker, ProcessingConfig, ProcessingResult, BAND_DEFS
-from .filters import apply_filter_chain
-from .realtime_filters import RealtimeFilter
+from .zero_phase_filters import ZeroPhaseSOSFilter
+from .causal_sos_filters import CausalSOSFilter
+from .causal_sos_steady_filters import CausalSOSSteadyFilter
+
 from .spectrum import compute_psd_welch
 from .band_power import compute_band_powers
