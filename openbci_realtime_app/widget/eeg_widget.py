@@ -46,7 +46,7 @@ class EEGWidget(pg.GraphicsLayoutWidget):
         self._n_channels = len(eeg_names)
 
         for i, name in enumerate(eeg_names):
-            color = CET_R3_DEFAULT[i % len(CET_R3)]
+            color = CET_R3[i % len(CET_R3)]
             plot = self.addPlot(row=i, col=0)
             plot.setLabel("left", f"{name}", units="µV")
             plot.getAxis("left").setWidth(60)
