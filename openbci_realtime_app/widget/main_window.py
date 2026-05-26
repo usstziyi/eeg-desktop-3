@@ -181,8 +181,14 @@ class MainWindow(QMainWindow):
         )
 
     def _init_recording_thread(self):
-        self._recorder_eeg_raw_thread = Recorder(os.path.dirname(__file__), "raw")
-        self._recorder_eeg_processed_thread = Recorder(os.path.dirname(__file__), "processed")
+        recording_dir = os.path.join(
+            os.path.dirname(__file__),
+            "..",
+            "outputs"
+        )
+        os.makedirs(recording_dir, exist_ok=True)
+        self._recorder_eeg_raw_thread = Recorder(recording_dir, "raw")
+        self._recorder_eeg_processed_thread = Recorder(recording_dir, "processed")
 
     def _connect_signals(self) -> None:
         panel = self._control_panel

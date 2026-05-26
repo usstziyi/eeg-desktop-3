@@ -79,6 +79,7 @@ class ControlPanel(QWidget):
         stream_layout = QFormLayout(stream_group)
         self._start_stream_btn = QPushButton("Start")
         self._stop_stream_btn = QPushButton("Stop")
+        self._stop_stream_btn.setStyleSheet(self._able_btn_style("#e53935"))
         self._start_stream_btn.setEnabled(False)
         self._stop_stream_btn.setEnabled(False)
         stream_btn_row = QHBoxLayout()
@@ -168,7 +169,8 @@ class ControlPanel(QWidget):
         self._record_original_signal = QCheckBox("原始信号")
         self._record_processed_signal = QCheckBox("实时信号")
         self._recorder_button = QPushButton("▶ 开始录制")
-        self._recorder_button.setStyleSheet(self._btn_style("#4a90d9"))
+        self._recorder_button.setCheckable(True)
+        self._recorder_button.setStyleSheet(self._toggle_btn_style("#e53935", "#4a90d9"))
         recorder_layout.addRow(self._record_original_signal)
         recorder_layout.addRow(self._record_processed_signal)
         recorder_layout.addRow(self._recorder_button)
@@ -308,7 +310,6 @@ class ControlPanel(QWidget):
     @Slot(bool)
     def _on_record_check_toggled(self, checked: bool) -> None:
         self._recorder_button.setText("⏸ 停止录制" if checked else "▶ 开始录制")
-        self._recorder_button.setStyleSheet(self._btn_style("#e53935" if checked else "#4a90d9"))
 
     @staticmethod
     def _notch_text_to_hz(text: str) -> float:
@@ -318,10 +319,11 @@ class ControlPanel(QWidget):
 
     def _emit_single(self, key: str, value) -> None:
         self.config_changed.emit({key: value})
-    
-    def _btn_style(self, color):
+
+
+    def _able_btn_style(self, color):
         return f"""
-            QPushButton {{
+            QPushButton:!disabled {{
                 background: {color};
                 color: #fff;
                 border: none;
@@ -329,11 +331,20 @@ class ControlPanel(QWidget):
                 border-radius: 3px;
                 font-weight: bold;
             }}
-            QPushButton:hover {{
-                opacity: 0.9;
+        """
+    def _toggle_btn_style(self, on_color, off_color):
+        return f"""
+            QPushButton {{
+                color: #fff;
+                border: none;
+                padding: 6px 12px;
+                border-radius: 3px;
+                font-weight: bold;
             }}
-            QPushButton:disabled {{
-                background: #555;
-                color: #888;
+            QPushButton:checked {{
+                background: {on_color};
+            }}
+            QPushButton:!checked {{
+                background: {off_color};
             }}
         """
