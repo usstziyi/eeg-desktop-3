@@ -8,8 +8,7 @@ from .causal_sos_filters import CausalSOSFilter
 from .causal_sos_steady_filters import CausalSOSSteadyFilter
 
 
-from .spectrum import compute_psd_welch
-from .band_power import compute_band_powers
+from .psd import PSDAnalyzer
 
 
 BAND_DEFS = {
@@ -61,6 +60,12 @@ class ProcessingWorker(QObject):
             notch_hz=self._config.notch_hz,
             n_channels=n_channels,
         )
+        self._psd_analyzer = PSDAnalyzer(
+            sampling_rate=self._config.sampling_rate,
+            window_type=self._config.window_type,
+            spectrum_window=self._config.spectrum_window,
+            overlap_ratio=self._config.overlap_ratio,
+        )
         self._trigger.connect(self._do_process)
         self._config_changed.connect(self._do_update_config)
 
@@ -76,6 +81,12 @@ class ProcessingWorker(QObject):
             bp_low_hz=config.bp_low_hz,
             bp_high_hz=config.bp_high_hz,
             notch_hz=config.notch_hz,
+        )
+        self._psd_analyzer.update_config(
+            sampling_rate=config.sampling_rate,
+            window_type=config.window_type,
+            spectrum_window=config.spectrum_window,
+            overlap_ratio=config.overlap_ratio,
         )
         
 
@@ -111,20 +122,12 @@ class ProcessingWorker(QObject):
 
         filtered = self._filter.apply(eeg_data)
 
-        # freqs, psd = compute_psd_welch(
-        #     filtered,
-        #     fs=config.sampling_rate,
-        #     window_type=config.window_type,
-        #     window_seconds=config.spectrum_window,
-        #     overlap_ratio=config.overlap_ratio,
-        # )
-
-        # band_powers = compute_band_powers(psd, freqs, BAND_DEFS)
+        psd_result = self._psd_analyzer.compute(filtered, band_defs=BAND_DEFS)
 
         result = ProcessingResult(
             eeg_processed=filtered,
-            psd_freqs=[],
-            psd_values=[],
-            band_powers=[],
+            psd_freqs=psd_result.freqs,
+            psd_values=psd_result.psd,
+            band_powers=psd_result.band_powers,
         )
         self.processed_ready.emit(result)

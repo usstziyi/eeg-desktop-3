@@ -137,10 +137,10 @@ class MainWindow(QMainWindow):
         layout.setSpacing(6)
         
         bottom_tab_widget = QTabWidget()
-        self.psd_widget = PSDWidget()
+        self.psd_widget_bottom = PSDWidget()
         self.spectrogram_widget = QWidget()
         self.band_power_widget = QWidget()
-        bottom_tab_widget.addTab(self.psd_widget, "PSD 频谱图")
+        bottom_tab_widget.addTab(self.psd_widget_bottom, "PSD 频谱图")  
         bottom_tab_widget.addTab(self.spectrogram_widget, "时频图")
         bottom_tab_widget.addTab(self.band_power_widget, "频带能量图")
 
@@ -389,8 +389,9 @@ class MainWindow(QMainWindow):
             window_sample_num = int(self._sample_rate * self._window_seconds)
             times = np.arange(-window_sample_num + 1, 1) / self._sample_rate
             self.eeg_widget.updata_data(times, self._eeg_clean[:, -window_sample_num:])
-            # if result.psd_freqs.size > 0 and result.psd_values.size > 0:
-            #     self._spectrum_widget.update_spectrum(result.psd_freqs, result.psd_values)
+            if result.psd_freqs.size > 0 and result.psd_values.size > 0:
+                self.psd_widget_bottom.update_psd(result.psd_freqs, result.psd_values)
+                self.psd_widget.update_psd(result.psd_freqs, result.psd_values)
             # if result.band_powers:
             #     self._band_power_widget.update_band_powers(result.band_powers)
         except Exception:
