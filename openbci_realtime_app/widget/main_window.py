@@ -1,5 +1,6 @@
 import os
 import traceback
+from dataclasses import replace
 
 import numpy as np
 from PySide6.QtCore import QSettings, QTimer, QThread, Qt
@@ -179,6 +180,9 @@ class MainWindow(QMainWindow):
         self._processing_worker.processed_ready.connect(
             self._on_processed_data, Qt.ConnectionType.QueuedConnection
         )
+        self._update_processing_config()
+ 
+
 
     def _init_recording_thread(self):
         recording_dir = os.path.join(
@@ -198,6 +202,29 @@ class MainWindow(QMainWindow):
         panel.stop_requested.connect(self._on_stop)
         panel.record_toggled.connect(self._on_record_toggled)
         panel.config_changed.connect(self._on_config_changed)
+
+    def _update_processing_config(self) -> None:
+        detrend  = self._settings.get("process", "detrend", default=True)
+        bp_low_hz = self._settings.get("process", "bp_low_hz", default=0.5)
+        bp_high_hz = self._settings.get("process", "bp_high_hz", default=40.0)
+        notch_hz = self._settings.get("process", "notch_hz", default=50.0)
+        sampling_rate = self._sample_rate
+        window_type = self._settings.get("spectrum", "window_type", default="Hann")
+        spectrum_window = self._settings.get("spectrum", "spectrum_window", default=4.0)
+        overlap_ratio = self._settings.get("spectrum", "overlap_ratio", default=50)
+        self._processing_config = ProcessingConfig(
+            detrend=detrend,
+            bp_low_hz=bp_low_hz,
+            bp_high_hz=bp_high_hz,
+            notch_hz=notch_hz,
+            sampling_rate=sampling_rate,
+            window_type=window_type,
+            spectrum_window=spectrum_window,
+            overlap_ratio=overlap_ratio,
+        )
+        self._processing_worker.update_config(self._processing_config)
+
+
 
     def _on_connect(self) -> None:
         try:
@@ -226,27 +253,7 @@ class MainWindow(QMainWindow):
             self._raw_data = np.array([])
             self._eeg_data = np.array([])
 
-            # 组装工作线程的配置
-            detrend  = self._settings.get("processing", "detrend", default=True)
-            bp_low_hz = self._settings.get("processing", "bp_low_hz", default=0.5)
-            bp_high_hz = self._settings.get("processing", "bp_high_hz", default=40.0)
-            notch_hz = self._settings.get("processing", "notch_hz", default=50.0)
-            sampling_rate = self._sample_rate
-            window_type = self._settings.get("processing", "window_type", default="Hann")
-            spectrum_window = self._settings.get("processing", "spectrum_window", default=4.0)
-            overlap_ratio = self._settings.get("processing", "overlap_ratio", default=50)
-            self._processing_config = ProcessingConfig(
-                detrend=detrend,
-                bp_low_hz=bp_low_hz,
-                bp_high_hz=bp_high_hz,
-                notch_hz=notch_hz,
-                sampling_rate=sampling_rate,
-                window_type=window_type,
-                spectrum_window=spectrum_window,
-                overlap_ratio=overlap_ratio,
-            )
- 
-
+            self._update_processing_config()
             self._show_board_info(session, name)
 
         except Exception as e:
@@ -296,7 +303,7 @@ class MainWindow(QMainWindow):
             self._raw_data = np.array([])
             self._eeg_data = np.array([])
             # 更新一下工作线程的配置参数
-            self._processing_worker.update_config(self._processing_config)
+            self._update_processing_config()
             self._timer.start()
         except Exception:
             traceback.print_exc()
@@ -319,7 +326,6 @@ class MainWindow(QMainWindow):
     compute_band_powers()     ──→ 工作线程
 
     留在主线程的都是轻量操作：
-    pyqtgraph updata_data    ──→ 渲染层已优化
     emit 信号                 ──→ 微秒级投递
     CSV 录制                  ──→ 入队 queue.put() 微秒级，后台 daemon 线程写磁盘
     """
@@ -383,18 +389,38 @@ class MainWindow(QMainWindow):
             parts = key.split(".")
             self._settings.set(value, *parts)
 
+            match key:
+                case "process.detrend":
+                    self._update_processing_config()
+                case "process.bp_low_hz":
+                    self._update_processing_config()
+                case "process.bp_high_hz":
+                    self._update_processing_config()
+                case "process.notch_hz":
+                    self._update_processing_config()
+                case "spectrum.window_type":
+                    self._update_processing_config()
+                case "spectrum.spectrum_window":
+                    self._update_processing_config()
+                case "spectrum.overlap_ratio":
+                    self._update_processing_config()
+
+
+
             # 这些在主线程中需要用到，所以保存到类成员中
-            if key == "display.window_seconds":
-                self.eeg_widget.set_x_range(value)
-            elif key == "display.amplitude_range":
-                self.eeg_widget.set_y_range(value)
-            elif key == "display.refresh_ms":
-                self._refresh_ms = value
-                self._timer.setInterval(value)
-            elif key == "recording.record_original":
-                self._record_original = value
-            elif key == "recording.record_processed":
-                self._record_processed = value
+            match key:
+                case "display.window_seconds":
+                    self.eeg_widget.set_x_range(value)
+                case "display.amplitude_range":
+                    self.eeg_widget.set_y_range(value)
+                case "display.refresh_ms":
+                    self._refresh_ms = value
+                    self._timer.setInterval(value)
+                case "recording.record_original":
+                    self._record_original = value
+                case "recording.record_processed":
+                    self._record_processed = value
+
 
 
 

@@ -149,9 +149,9 @@ class ControlPanel(QWidget):
         display_layout.addRow("显示时长:", self._window_time_spin)
 
         self._amplitude_spin = QSpinBox()
-        self._amplitude_spin.setRange(10, 1000)
+        self._amplitude_spin.setRange(10, 2000)
         self._amplitude_spin.setValue(100)
-        self._amplitude_spin.setSingleStep(10)
+        self._amplitude_spin.setSingleStep(20)
         self._amplitude_spin.setSuffix(" µV")
         display_layout.addRow("信号强度",self._amplitude_spin)
 

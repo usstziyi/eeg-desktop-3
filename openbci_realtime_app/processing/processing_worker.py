@@ -1,12 +1,11 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 import numpy as np
 from PySide6.QtCore import QObject, Signal, Slot
 
-# from .filters import apply_filter_chain
-# from .spectrum import compute_psd_welch
-# from .band_power import compute_band_powers
-
+from .filters import apply_filter_chain
+from .spectrum import compute_psd_welch
+from .band_power import compute_band_powers
 
 
 BAND_DEFS = {
@@ -38,7 +37,7 @@ class ProcessingResult:
     eeg_processed: np.ndarray
     psd_freqs: np.ndarray
     psd_values: np.ndarray
-    band_powers: np.ndarray
+    band_powers: list = field(default_factory=list)
 
 
 class ProcessingWorker(QObject):
@@ -74,24 +73,38 @@ class ProcessingWorker(QObject):
     3.计算psd
     4.计算band_power
     """
+    _MIN_SAMPLES_FOR_FILTER = 28  # 4 阶 SOS 带通 filtfilt 要求 ≥28 点
+
     @Slot(object)
     def _do_process(self, eeg_data: np.ndarray) -> None:
-        config = self._config   # 一次原子读取，锁定快照
-        # TODO
-        # 1.去趋势
+        if eeg_data.shape[1] < self._MIN_SAMPLES_FOR_FILTER:
+            return
+
+        config = self._config
+
         if config.detrend:
-            eeg_data -= np.mean(eeg_data, axis=1, keepdims=True)
+            eeg_data = eeg_data - np.mean(eeg_data, axis=1, keepdims=True)
 
-        # 2.滤波
-        # 3.计算psd
-        # 4.计算band_power
+        filtered = apply_filter_chain(
+            eeg_data,
+            fs=config.sampling_rate,
+            bp_low_hz=config.bp_low_hz,
+            bp_high_hz=config.bp_high_hz,
+            notch_hz=config.notch_hz,
+        )
 
+        # freqs, psd = compute_psd_welch(
+        #     filtered,
+        #     fs=config.sampling_rate,
+        #     window_type=config.window_type,
+        #     window_seconds=config.spectrum_window,
+        #     overlap_ratio=config.overlap_ratio,
+        # )
 
-
-
+        # band_powers = compute_band_powers(psd, freqs, BAND_DEFS)
 
         result = ProcessingResult(
-            eeg_processed=eeg_data,
+            eeg_processed=filtered,
             psd_freqs=[],
             psd_values=[],
             band_powers=[],
