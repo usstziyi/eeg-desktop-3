@@ -6,7 +6,7 @@
   "display": {
     "refresh_ms": 50,
     "window_seconds": 2.0,
-    "amplitude_range": 400
+    "amplitude_range": 130
   },
   "process": {
     "detrend": true,

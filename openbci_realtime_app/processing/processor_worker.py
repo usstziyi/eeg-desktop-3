@@ -77,8 +77,14 @@ class ProcessingWorker(QObject):
     def _do_process(self, eeg_data: np.ndarray) -> None:
         config = self._config   # 一次原子读取，锁定快照
         # TODO
+        # 1.去趋势
+        if config.detrend:
+            eeg_data -= np.mean(eeg_data, axis=1, keepdims=True)
 
-
+        # 2.滤波
+        
+        # 3.计算psd
+        # 4.计算band_power
 
 
 

@@ -331,7 +331,6 @@ class MainWindow(QMainWindow):
             # 发送给录制线程
             if self._raw_data.size > 0:
                 timestamps = self._raw_data[self._timestamp_channel, :]
-                print(self._record_original)
                 if self._recorder_eeg_raw_thread.is_recording and self._record_original:
                     self._recorder_eeg_raw_thread.write_samples(self._eeg_raw, timestamps)
                 # if self._recorder_eeg_processed_thread.is_recording and self._record_processed:
@@ -376,6 +375,7 @@ class MainWindow(QMainWindow):
             parts = key.split(".")
             self._settings.set(value, *parts)
 
+            # 这些在主线程中需要用到，所以保存到类成员中
             if key == "display.window_seconds":
                 self.eeg_widget.set_x_range(value)
             elif key == "display.amplitude_range":
