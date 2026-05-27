@@ -134,6 +134,12 @@ class ControlPanel(QWidget):
         self._overlap_ratio.setRange(10,50)
         self._overlap_ratio.setSingleStep(5)
         spectrum_layout.addRow("重叠比例:",self._overlap_ratio)
+        self._freqs_range = QDoubleSpinBox()
+        self._freqs_range.setSuffix(" Hz")
+        self._freqs_range.setRange(10, 125.0)
+        self._freqs_range.setValue(60)
+        self._freqs_range.setSingleStep(5)
+        spectrum_layout.addRow("频率范围:",self._freqs_range)
         return spectrum_group
 
 
