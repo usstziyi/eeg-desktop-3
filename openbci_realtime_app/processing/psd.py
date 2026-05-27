@@ -1,13 +1,14 @@
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 import numpy as np
 from scipy import signal
 
 _WINDOW_MAP = {
-    "Hann": "hann",
-    "Blackman": "blackman",
-    "Bartlett": "bartlett",
-    "Rectangular": "boxcar",
+    "Hann": "hann",           # 汉宁窗，余弦窗的一种，主瓣较窄，旁瓣衰减较快
+    "Hamming": "hamming",     # 汉明窗，改进的余弦窗，旁瓣电平更低
+    "Blackman": "blackman",   # 布莱克曼窗，二阶余弦窗，旁瓣抑制更好但主瓣更宽
+    "Bartlett": "bartlett",   # 巴特利特窗，三角窗，计算简单
+    "Rectangular": "boxcar",  # 矩形窗，无衰减，频谱泄漏最大但频率分辨率最高
 }
 
 
@@ -15,7 +16,6 @@ _WINDOW_MAP = {
 class PSDResult:
     freqs: np.ndarray
     psd: np.ndarray
-    band_powers: list = field(default_factory=list)
 
 
 class PSDAnalyzer:
@@ -47,18 +47,9 @@ class PSDAnalyzer:
         if overlap_ratio is not None:
             self._overlap_ratio = overlap_ratio
 
-    def compute(
-        self,
-        eeg_data: np.ndarray,
-        band_defs: dict[str, tuple[float, float]] | None = None,
-    ) -> PSDResult:
+    def compute(self, eeg_data: np.ndarray) -> PSDResult:
         freqs, psd = self._welch(eeg_data)
-
-        band_powers: list = []
-        if band_defs is not None:
-            band_powers = self._compute_band_powers(psd, freqs, band_defs)
-
-        return PSDResult(freqs=freqs, psd=psd, band_powers=band_powers)
+        return PSDResult(freqs=freqs, psd=psd)
 
     def _welch(self, data: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
         nperseg = int(self._spectrum_window * self._fs)
@@ -66,12 +57,15 @@ class PSDAnalyzer:
             nperseg = 64
         if nperseg > data.shape[1]:
             nperseg = data.shape[1]
+        # 计算重叠样本数：将窗口长度乘以重叠百分比（转换为小数），转换为整数
         noverlap = int(nperseg * self._overlap_ratio / 100.0)
 
+        # 从窗口类型映射字典中获取对应的scipy窗口名称，如果找不到则默认使用"hann"（汉宁窗）
         win_name = _WINDOW_MAP.get(self._window_type, "hann")
 
         psd_list: list[np.ndarray] = []
         freqs: np.ndarray | None = None
+        # 每次取出的是 一个通道的全部时间序列数据 （一行）
         for ch_data in data:
             f, pxx = signal.welch(
                 ch_data,
@@ -85,23 +79,3 @@ class PSDAnalyzer:
             psd_list.append(pxx)
 
         return freqs, np.array(psd_list)
-
-    @staticmethod
-    def _compute_band_powers(
-        psd: np.ndarray,
-        freqs: np.ndarray,
-        band_defs: dict[str, tuple[float, float]],
-    ) -> list[dict[str, float]]:
-        total_power = np.trapezoid(psd, freqs, axis=1)
-        result: list[dict[str, float]] = []
-        for ch_psd, total in zip(psd, total_power):
-            ch_powers: dict[str, float] = {}
-            for band_name, (low, high) in band_defs.items():
-                mask = (freqs >= low) & (freqs <= high)
-                if not np.any(mask):
-                    ch_powers[band_name] = 0.0
-                    continue
-                abs_power = float(np.trapezoid(ch_psd[mask], freqs[mask]))
-                ch_powers[band_name] = float(abs_power / total) if total > 0 else 0.0
-            result.append(ch_powers)
-        return result

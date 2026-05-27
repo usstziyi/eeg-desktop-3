@@ -121,7 +121,7 @@ class ControlPanel(QWidget):
         spectrum_group = QGroupBox("频域分析")
         spectrum_layout = QFormLayout(spectrum_group)
         self._window_type = QComboBox()
-        self._window_type.addItems(["Hann", "Hann", "Blackman", "Bartlett", "Rectangular"])
+        self._window_type.addItems(["Hann", "Hamming", "Blackman", "Bartlett", "Rectangular"])
         self._window_type.setCurrentText("Hann")
         spectrum_layout.addRow("窗口类型:",self._window_type)
         self._spectrum_window = QDoubleSpinBox()

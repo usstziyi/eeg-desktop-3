@@ -377,21 +377,21 @@ class MainWindow(QMainWindow):
 
     def _on_processed_data(self, result: ProcessingResult) -> None:
         try:
-            if result.eeg_processed.size == 0 or result.eeg_processed.ndim < 2:
-                return
-            
-            # 更新eeg_clean
-            new_len = result.eeg_processed.shape[1]
-            self._eeg_clean[:, :-new_len] = self._eeg_clean[:, new_len:]
-            self._eeg_clean[:, -new_len:] = result.eeg_processed[:, -new_len:]
-
-            # 根据display.window_seconds取最近window_sample_num个样本
-            window_sample_num = int(self._sample_rate * self._window_seconds)
-            times = np.arange(-window_sample_num + 1, 1) / self._sample_rate
-            self.eeg_widget.updata_data(times, self._eeg_clean[:, -window_sample_num:])
+            # 时域图
+            if result.eeg_processed.size > 0 and result.eeg_processed.ndim >= 2:
+                # 更新eeg_clean
+                new_len = result.eeg_processed.shape[1]
+                self._eeg_clean[:, :-new_len] = self._eeg_clean[:, new_len:]
+                self._eeg_clean[:, -new_len:] = result.eeg_processed[:, -new_len:]
+                # 根据display.window_seconds取最近window_sample_num个样本
+                window_sample_num = int(self._sample_rate * self._window_seconds)
+                times = np.arange(-window_sample_num + 1, 1) / self._sample_rate
+                self.eeg_widget.updata_data(times, self._eeg_clean[:, -window_sample_num:])
+            # 频谱图
             if result.psd_freqs.size > 0 and result.psd_values.size > 0:
                 self.psd_widget_bottom.update_psd(result.psd_freqs, result.psd_values)
-                self.psd_widget.update_psd(result.psd_freqs, result.psd_values)
+                # self.psd_widget.update_psd(result.psd_freqs, result.psd_values)
+            # 带宽功率
             # if result.band_powers:
             #     self._band_power_widget.update_band_powers(result.band_powers)
         except Exception:

@@ -9,15 +9,7 @@ from .causal_sos_steady_filters import CausalSOSSteadyFilter
 
 
 from .psd import PSDAnalyzer
-
-
-BAND_DEFS = {
-    "delta": (0.5, 4.0),
-    "theta": (4.0, 8.0),
-    "alpha": (8.0, 13.0),
-    "beta": (13.0, 30.0),
-    "gamma": (30.0, 45.0),
-}
+from .band_power import BandPowerAnalyzer
 
 
 @dataclass(frozen=True)
@@ -66,6 +58,7 @@ class ProcessingWorker(QObject):
             spectrum_window=self._config.spectrum_window,
             overlap_ratio=self._config.overlap_ratio,
         )
+        self._band_power_analyzer = BandPowerAnalyzer()
         self._trigger.connect(self._do_process)
         self._config_changed.connect(self._do_update_config)
 
@@ -122,12 +115,15 @@ class ProcessingWorker(QObject):
 
         filtered = self._filter.apply(eeg_data)
 
-        psd_result = self._psd_analyzer.compute(filtered, band_defs=BAND_DEFS)
+        psd_result = self._psd_analyzer.compute(filtered)
+        # band_power_result = self._band_power_analyzer.compute(
+        #     psd_result.psd, psd_result.freqs
+        # )
 
         result = ProcessingResult(
             eeg_processed=filtered,
             psd_freqs=psd_result.freqs,
             psd_values=psd_result.psd,
-            band_powers=psd_result.band_powers,
+            # band_powers=band_power_result.band_powers,
         )
         self.processed_ready.emit(result)
